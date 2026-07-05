@@ -1,5 +1,6 @@
 【简介】
-Kali Tools Deployer 是一款 Kali Linux 工具 Windows 一键部署工具，
+Kali-Tools-for-Windows
+是一款 Kali Linux 工具 Windows 一键部署工具，
 让你在 Windows 上也能快速用上 Kali Linux 的常用安全工具。
 
 
