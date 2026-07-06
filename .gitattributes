@@ -1,0 +1,27 @@
+# 自动检测文本文件并规范化行尾
+* text=auto
+
+# PowerShell 脚本：保持 CRLF 行尾，保留编码
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+
+# 批处理文件：保持 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 文本文件
+*.txt text eol=crlf
+*.md text eol=lf
+
+# 二进制文件，不做转换
+*.exe binary
+*.dll binary
+*.msi binary
+*.zip binary
+*.7z binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
