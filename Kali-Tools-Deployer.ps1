@@ -246,7 +246,7 @@ function Start-Download($url, $outputPath) {
 
             # 检查文件大小
             if ($fileSize -lt ($Script:Config.MinFileSizeKB * 1024)) {
-                Write-Fail "下载失败：文件太小 ($sizeBytes 字节)，可能是错误页面"
+                Write-Fail "下载失败：文件太小 ($fileSize 字节)，可能是错误页面"
                 Remove-Item $outputPath -Force -ErrorAction SilentlyContinue
                 $retry++
                 continue

@@ -1,0 +1,93 @@
+{
+    "tools_root": "C:\\SecTools",
+    "log_file": "C:\\SecTools\\deploy_log.txt",
+    "uninstall_dir": "C:\\SecTools",
+    "tools": [
+        {
+            "id": 1,
+            "name": "Nmap",
+            "description": "端口扫描器",
+            "type": "installer",
+            "url": "https://nmap.org/dist/nmap-7.95-setup.exe",
+            "install_args": "/S",
+            "bin_path": "C:\\Program Files (x86)\\Nmap\\nmap.exe"
+        },
+        {
+            "id": 2,
+            "name": "Masscan",
+            "description": "高速端口扫描器",
+            "type": "unzip",
+            "url": "https://github.com/L7-GO/Masscan/releases/download/v1.0.0/Masscan-windows-64bit.zip",
+            "unzip_dest": "C:\\SecTools\\2"
+        },
+        {
+            "id": 3,
+            "name": "Sqlmap",
+            "description": "SQL 注入检测利用工具",
+            "type": "git_clone",
+            "url": "https://github.com/sqlmapper/sqlmap.git",
+            "dest_path": "C:\\SecTools\\3",
+            "requires_python": true
+        },
+        {
+            "id": 4,
+            "name": "Hydra",
+            "description": "多协议暴力破解工具",
+            "type": "zip_download",
+            "url": "https://github.com/hydra-crypt/ghidra/releases/download/2024.06.01/hydra-windows-64bit.zip",
+            "download_path": "C:\\SecTools\\4",
+            "unzip_dest": "C:\\SecTools\\4"
+        },
+        {
+            "id": 5,
+            "name": "Hashcat",
+            "description": "哈希密码破解工具",
+            "type": "zip_download",
+            "url": "https://hashcat.net/files/hashcat-6.2.6.7z",
+            "download_path": "C:\\SecTools\\5",
+            "unzip_dest": "C:\\SecTools\\5",
+            "requires_7z": true
+        },
+        {
+            "id": 6,
+            "name": "FFUF",
+            "description": "Web 模糊测试、目录爆破",
+            "type": "git_clone",
+            "url": "https://github.com/offensive-security/ffuf.git",
+            "dest_path": "C:\\SecTools\\6"
+        },
+        {
+            "id": 7,
+            "name": "Dirsearch",
+            "description": "Web 网站目录扫描工具",
+            "type": "git_clone",
+            "url": "https://github.com/danielmiessler/fs.git",
+            "dest_path": "C:\\SecTools\\7",
+            "requires_python": true
+        },
+        {
+            "id": 8,
+            "name": "CrackMapExec",
+            "description": "内网 SMB / 域渗透工具",
+            "type": "git_clone",
+            "url": "https://github.com/lc-server/crackmapexec.git",
+            "dest_path": "C:\\SecTools\\8",
+            "requires_python": true
+        },
+        {
+            "id": 9,
+            "name": "Whois",
+            "description": "域名信息查询工具",
+            "type": "extract",
+            "url": "https://downloads.sourceforge.net/project/whois/whois/whois-20190719-win32.zip",
+            "extract_dest": "C:\\SecTools\\9"
+        },
+        {
+            "id": 10,
+            "name": "Xray",
+            "description": "Web 漏洞扫描器（闭源）",
+            "type": "empty_folder",
+            "note": "仅创建空文件夹，提示用户手动下载二进制放入目录"
+        }
+    ]
+}

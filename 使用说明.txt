@@ -1,5 +1,5 @@
 Kali Tools Deployer v26.7.5 使用说明
-================================
+=====================================
 
 【简介】
 将 Kali Linux 常用安全工具一键部署到 Windows 系统。
@@ -7,7 +7,9 @@ Kali Tools Deployer v26.7.5 使用说明
 
 【使用方法】
 1. 右键点击 "启动部署工具.bat"，选择 "以管理员身份运行"
-2. 根据菜单提示选择需要的功能
+2. 根据菜单提示选择部署模式
+3. 等待工具安装完成
+4. 桌面 KaliTools 文件夹里有所有工具的快捷方式
 
 【两种模式说明】
 
@@ -29,23 +31,23 @@ Kali Tools Deployer v26.7.5 使用说明
 【常见问题】
 
 Q: 下载很慢或者失败怎么办？
-A: 1. 挂代理后再试
-   2. 手动下载安装包放到 C:\KaliTools\Downloads\ 目录
-   3. 推荐使用 WSL 模式，更稳定
+  A: 1. 挂代理后再试
+     2. 手动下载安装包放到 C:\KaliTools\Downloads\ 目录
+     3. 推荐使用 WSL 模式，更稳定
 
 Q: 提示不是管理员权限？
-A: 右键 bat 文件，选择 "以管理员身份运行"
+  A: 右键 bat 文件，选择 "以管理员身份运行"
 
 Q: 7z 文件无法解压？
-A: 安装 7-Zip 后自动支持，或者手动解压到 C:\KaliTools\
+  A: 安装 7-Zip 后自动支持，或者手动解压到 C:\KaliTools\
 
 Q: Metasploit 下载失败？
-A: 国内网络访问 windows.metasploit.com 不稳定，建议：
-   1. 手动下载 msi 文件放到 Downloads 目录
-   2. 或者使用 WSL 模式安装
+  A: 国内网络访问 windows.metasploit.com 不稳定，建议：
+     1. 手动下载 msi 文件放到 Downloads 目录
+     2. 或者使用 WSL 模式安装
 
 Q: 安装的工具在哪里找？
-A: 桌面的 KaliTools 文件夹里有快捷方式
+  A: 桌面的 KaliTools 文件夹里有快捷方式
 
 【免责声明】
 本工具仅供学习和授权的安全测试使用。
