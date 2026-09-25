@@ -1,5 +1,5 @@
 ﻿# ============================================
-# Kali Tools Deployer v26.7.5
+# Kali Tools Deployer v1.1
 # Kali Linux 工具 Windows 一键部署工具
 # ============================================
 
@@ -12,9 +12,9 @@ $ErrorActionPreference = "Continue"
 # 全局配置
 # ============================================
 $Script:Config = @{
-    ToolsDir      = "C:\KaliTools"
-    DownloadDir   = "C:\KaliTools\Downloads"
-    BinDir        = "C:\KaliTools\bin"
+    ToolsDir      = "C:\SecTools"
+    DownloadDir   = "C:\SecTools\Downloads"
+    BinDir        = "C:\SecTools\bin"
     ShortcutsDir  = "$env:PUBLIC\Desktop\KaliTools"
     DownloadRetry = 2
     TimeoutSec    = 600
@@ -22,125 +22,30 @@ $Script:Config = @{
 }
 
 # ============================================
-# 工具列表
+# 工具列表（21 个）
 # ============================================
 $Script:ToolList = @(
-    # ===== 信息收集 =====
-    @{
-        Cat     = "信息收集"
-        Name    = "Nmap"
-        Desc    = "网络扫描与主机发现工具"
-        Type    = "installer"
-        Url     = "https://nmap.org/dist/nmap-7.95-setup.exe"
-        Args    = "/S"
-        BinPath = "C:\Program Files (x86)\Nmap\nmap.exe"
-        Status  = "stable"
-    },
-    @{
-        Cat     = "信息收集"
-        Name    = "Wireshark"
-        Desc    = "网络协议分析器（抓包工具）"
-        Type    = "installer"
-        Url     = "https://2.na.dl.wireshark.org/win64/Wireshark-win64-4.4.0.exe"
-        Args    = "/S /desktopicon=yes"
-        BinPath = "C:\Program Files\Wireshark\Wireshark.exe"
-        Status  = "stable"
-    },
-
-    # ===== 漏洞扫描 =====
-    @{
-        Cat     = "漏洞扫描"
-        Name    = "SQLMap"
-        Desc    = "自动化 SQL 注入检测与利用工具"
-        Type    = "portable"
-        Url     = "https://github.com/sqlmapproject/sqlmap/archive/refs/heads/master.zip"
-        Extract = $true
-        BinPath = "C:\KaliTools\sqlmap-master\sqlmap.py"
-        Note    = "需要 Python 环境"
-        Status  = "stable"
-    },
-
-    # ===== 密码攻击 =====
-    @{
-        Cat     = "密码攻击"
-        Name    = "Hashcat"
-        Desc    = "GPU 高速密码破解工具"
-        Type    = "portable"
-        Url     = "https://hashcat.net/files/hashcat-6.2.6.7z"
-        Extract = $true
-        BinPath = "C:\KaliTools\hashcat-6.2.6\hashcat.exe"
-        Note    = "7z 格式，需安装 7-Zip 或手动解压"
-        Status  = "warning"
-    },
-
-    # ===== Web 安全测试 =====
-    @{
-        Cat     = "Web测试"
-        Name    = "Burp Suite Community"
-        Desc    = "Web 应用安全测试平台（抓包/改包）"
-        Type    = "installer"
-        Url     = "https://portswigger-cdn.net/burp/releases/download?product=community&version=2024.5.5&type=WindowsX64"
-        Args    = "-q"
-        BinPath = "C:\Program Files\BurpSuiteCommunity\BurpSuiteCommunity.exe"
-        Status  = "stable"
-    },
-    @{
-        Cat     = "Web测试"
-        Name    = "Gobuster"
-        Desc    = "目录/文件/DNS 暴力枚举工具"
-        Type    = "portable"
-        Url     = "https://github.com/OJ/gobuster/releases/download/v3.6.0/gobuster_3.6.0_windows_amd64.zip"
-        Extract = $true
-        BinPath = "C:\KaliTools\gobuster_3.6.0_windows_amd64\gobuster.exe"
-        Status  = "stable"
-    },
-
-    # ===== 漏洞利用 =====
-    @{
-        Cat     = "漏洞利用"
-        Name    = "Metasploit Framework"
-        Desc    = "渗透测试框架（漏洞利用）"
-        Type    = "installer"
-        Url     = "https://windows.metasploit.com/metasploitframework-latest.msi"
-        Args    = "/quiet /norestart"
-        BinPath = "C:\metasploit-framework\bin\msfconsole.bat"
-        Note    = "国内下载可能失败，建议手动下载后放入 Downloads 目录"
-        Status  = "warning"
-    },
-    @{
-        Cat     = "漏洞利用"
-        Name    = "Netcat"
-        Desc    = "网络瑞士军刀（端口监听/连接/传输）"
-        Type    = "portable"
-        Url     = "https://eternallybored.org/misc/netcat/netcat-win32-1.12.zip"
-        Extract = $true
-        BinPath = "C:\KaliTools\netcat-win32-1.12\nc.exe"
-        Status  = "stable"
-    },
-
-    # ===== 无线安全 =====
-    @{
-        Cat     = "无线攻击"
-        Name    = "Aircrack-ng"
-        Desc    = "WiFi 安全审计与密码破解工具"
-        Type    = "portable"
-        Url     = "https://download.aircrack-ng.org/aircrack-ng-1.7-win.zip"
-        Extract = $true
-        BinPath = "C:\KaliTools\aircrack-ng-1.7-win\bin\aircrack-ng.exe"
-        Status  = "stable"
-    },
-
-    # ===== 逆向工程 =====
-    @{
-        Cat     = "逆向工程"
-        Name    = "x64dbg"
-        Desc    = "Windows 32/64 位调试器"
-        Type    = "portable"
-        Url     = "https://github.com/x64dbg/x64dbg/releases/download/snapshot/2024-06-06_22-10\x64dbg_2024-06-06_22-10.zip"
-        Extract = $true
-        BinPath = "C:\KaliTools\x64dbg\release\x64\x64dbg.exe"
-        Status  = "stable"
-    }
+    @{ Cat="信息收集"; Name="Nmap";         Desc="端口扫描器";              Type="installer"; Url="https://nmap.org/dist/nmap-7.95-setup.exe";                        Args="/S";                                          BinPath="C:\Program Files (x86)\Nmap\nmap.exe";              Status="stable" },
+    @{ Cat="信息收集"; Name="Masscan";      Desc="高速端口扫描器";          Type="portable";  Url="https://github.com/L7-GO/Masscan/releases/download/v1.0.0/Masscan-windows-64bit.zip";       Extract=$true; BinPath="";                                      Status="stable" },
+    @{ Cat="信息收集"; Name="Whois";        Desc="域名信息查询工具";        Type="portable";  Url="https://downloads.sourceforge.net/project/whois/whois/whois-20190719-win32.zip";              Extract=$true; BinPath="";                                      Status="stable" },
+    @{ Cat="信息收集"; Name="Subfinder";    Desc="子域名发现工具";          Type="portable";  Url="https://github.com/projectdiscovery/subfinder/releases/download/v2.6.7/subfinder_2.6.7_windows_amd64.zip"; Extract=$true; BinPath=""; Status="stable" },
+    @{ Cat="信息收集"; Name="Httpx";        Desc="HTTP探测工具";            Type="portable";  Url="https://github.com/projectdiscovery/httpx/releases/download/v1.6.10/httpx_1.6.10_windows_amd64.zip"; Extract=$true; BinPath=""; Status="stable" },
+    @{ Cat="漏洞扫描"; Name="Sqlmap";       Desc="SQL注入检测利用工具";    Type="portable";  Url="https://github.com/sqlmapproject/sqlmap/archive/refs/heads/master.zip";                       Extract=$true; BinPath=""; Note="需要 Python 环境";                       Status="stable" },
+    @{ Cat="漏洞扫描"; Name="Nuclei";       Desc="模板化漏洞扫描器";        Type="portable";  Url="https://github.com/projectdiscovery/nuclei/releases/download/v3.3.7/nuclei_3.3.7_windows_amd64.zip"; Extract=$true; BinPath=""; Status="stable" },
+    @{ Cat="漏洞扫描"; Name="Xray";         Desc="Web漏洞扫描器（闭源）";   Type="empty";     Url="";                                                                                           Note="请手动下载二进制放入 C:\SecTools\xray";                 Status="warning" },
+    @{ Cat="密码攻击"; Name="Hashcat";      Desc="哈希密码破解工具";        Type="portable";  Url="https://hashcat.net/files/hashcat-6.2.6.7z";                                                 Extract=$true; BinPath=""; Note="需要 7-Zip 解压";                        Status="stable" },
+    @{ Cat="密码攻击"; Name="Hydra";        Desc="多协议暴力破解工具";      Type="portable";  Url="https://github.com/vanhauser-thc/thc-hydra/releases/download/v9.6/hydra-9.6-windows.zip";    Extract=$true; BinPath="";                                      Status="stable" },
+    @{ Cat="密码攻击"; Name="John";         Desc="密码哈希破解工具";        Type="portable";  Url="https://github.com/openwall/john/archive/refs/heads/bleeding-jumbo.zip";                       Extract=$true; BinPath=""; Note="需要编译或下载预编译包";                   Status="stable" },
+    @{ Cat="密码攻击"; Name="Mimikatz";     Desc="Windows凭据提取工具";     Type="portable";  Url="https://github.com/gentilkiwi/mimikatz/releases/download/2.2.0-20240918/mimikatz_trunk.7z";  Extract=$true; BinPath=""; Note="需要 7-Zip 解压";                        Status="stable" },
+    @{ Cat="Web测试"; Name="FFUF";         Desc="Web模糊测试/目录爆破";     Type="portable";  Url="https://github.com/ffuf/ffuf/releases/download/v2.1.0/ffuf_2.1.0_windows_amd64.zip";         Extract=$true; BinPath="";                                      Status="stable" },
+    @{ Cat="Web测试"; Name="Gobuster";     Desc="目录/文件/DNS暴力枚举";   Type="portable";  Url="https://github.com/OJ/gobuster/releases/download/v3.6.0/gobuster_3.6.0_windows_amd64.zip";  Extract=$true; BinPath="";                                      Status="stable" },
+    @{ Cat="Web测试"; Name="Dirsearch";    Desc="Web网站目录扫描工具";      Type="portable";  Url="https://github.com/maurosoria/dirsearch/archive/refs/heads/master.zip";                       Extract=$true; BinPath=""; Note="需要 Python 环境";                       Status="stable" },
+    @{ Cat="Web测试"; Name="RustScan";     Desc="Rust高速端口扫描器";       Type="portable";  Url="https://github.com/RustScan/RustScan/releases/download/2.3.0/rustscan-2.3.0-windows.zip";   Extract=$true; BinPath="";                                      Status="stable" },
+    @{ Cat="网络分析"; Name="Wireshark";    Desc="网络协议分析器";           Type="installer"; Url="https://2.na.dl.wireshark.org/win64/WiresharkPortable64-4.4.8.paf.exe";                       Args="/S";                                          BinPath="C:\SecTools\WiresharkPortable\Wireshark.exe";     Status="stable" },
+    @{ Cat="网络分析"; Name="Responder";    Desc="LLMNR/NBT-NS投毒工具";   Type="portable";  Url="https://github.com/lgandx/Responder/archive/refs/heads/master.zip";                           Extract=$true; BinPath=""; Note="需要 Python 环境";                       Status="stable" },
+    @{ Cat="漏洞利用"; Name="Evil-WinRM";   Desc="Windows远程管理工具";      Type="portable";  Url="https://github.com/Hackplayers/evil-winrm/archive/refs/heads/master.zip";                     Extract=$true; BinPath=""; Note="需要 Python 环境";                       Status="stable" },
+    @{ Cat="漏洞利用"; Name="Impacket";     Desc="网络协议工具集";           Type="portable";  Url="https://github.com/fortra/impacket/archive/refs/heads/master.zip";                            Extract=$true; BinPath=""; Note="需要 Python 环境 + pip install impacket", Status="stable" },
+    @{ Cat="内网渗透"; Name="CrackMapExec"; Desc="内网SMB/域渗透工具";       Type="portable";  Url="https://github.com/Penntest-docker/CrackMapExec/archive/refs/heads/master.zip";               Extract=$true; BinPath=""; Note="需要 Python 环境",                        Status="stable" }
 )
 
 # ============================================
@@ -758,7 +663,7 @@ function Show-About {
     Write-Host "       关于 Kali Tools Deployer" -ForegroundColor Cyan
     Write-Host "  =========================================" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "  版本: v2.0" -ForegroundColor White
+    Write-Host "  版本: v1.1" -ForegroundColor White
     Write-Host ""
     Write-Host "  功能: 将 Kali Linux 常用安全工具一键部署到 Windows"
     Write-Host ""
@@ -788,7 +693,7 @@ function Main-Menu {
         Clear-Host
         Write-Host ""
         Write-Host "  =========================================" -ForegroundColor Cyan
-        Write-Host "     Kali Tools Deployer v2.0" -ForegroundColor Cyan
+        Write-Host "     Kali Tools Deployer v1.1" -ForegroundColor Cyan
         Write-Host "     Kali 工具 Windows 部署工具" -ForegroundColor Cyan
         Write-Host "  =========================================" -ForegroundColor Cyan
         Write-Host ""

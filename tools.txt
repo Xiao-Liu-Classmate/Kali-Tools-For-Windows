@@ -1,21 +1,30 @@
 Kali-Tools-For-Windows 工具清单
 =====================================
 
-工具编号	工具名	用途	部署方式
-1	Nmap	端口扫描器	下载 exe 静默安装
-2	Masscan	高速端口扫描器	下载 zip 二进制解压
-3	Sqlmap	SQL 注入检测利用工具	Git 克隆源码，依赖 Python
-4	Hydra	多协议暴力破解工具	下载 zipWindows 二进制包
-5	Hashcat	哈希密码破解工具	下载 7z 二进制包
-6	FFUF	Web 模糊测试、目录爆破	Git 克隆源码
-7	Dirsearch	Web 网站目录扫描工具	Git 克隆源码，依赖 Python
-8	CrackMapExec	内网 SMB / 域渗透工具	Git 克隆源码，pip 本地安装，依赖 Python
-9	Whois	域名信息查询工具	微软 Sysinternals 工具包解压
-10	Xray	Web 漏洞扫描器（闭源）	仅创建空文件夹，提示用户手动下载二进制
+编号	工具名		用途		部署方式
+1	Nmap		端口扫描器	下载 exe 静默安装
+2	Masscan		高速端口扫描器	下载 zip 解压
+3	Sqlmap		SQL注入检测利用工具	Git 克隆源码
+4	Hydra		多协议暴力破解工具	下载 zip 解压
+5	Hashcat		哈希密码破解工具	下载 7z 解压
+6	FFUF		Web模糊测试/目录爆破	下载 zip 解压
+7	Dirsearch	Web网站目录扫描工具	Git 克隆源码
+8	Gobuster	目录/文件/DNS暴力枚举	下载 zip 解压
+9	Whois		域名信息查询工具	下载 zip 解压
+10	Xray		Web漏洞扫描器（闭源）	仅创建空文件夹，需手动下载
+11	Wireshark	网络协议分析器	下载安装包静默安装
+12	Nuclei		模板化漏洞扫描器	下载 zip 解压
+13	Subfinder	子域名发现工具	下载 zip 解压
+14	Httpx		HTTP探测工具	下载 zip 解压
+15	RustScan	Rust高速端口扫描器	下载 zip 解压
+16	John		密码哈希破解工具	下载源码压缩包
+17	Mimikatz	Windows凭据提取工具	下载 7z 解压
+18	Responder	LLMNR/NBT-NS投毒工具	Git 克隆源码
+19	Evil-WinRM	Windows远程管理工具	Git 克隆源码
+20	Impacket	网络协议工具集	Git 克隆源码
+21	CrackMapExec	内网SMB/域渗透工具	Git 克隆源码
 
 部署目录
 --------
 工具安装目录：C:\SecTools\
-下载文件目录：C:\SecTools\Downloads\
-快捷方式目录：桌面\KaliTools\
 日志文件：C:\SecTools\deploy_log.txt

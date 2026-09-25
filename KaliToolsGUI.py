@@ -20,7 +20,7 @@ APP_DIRS = ("bin", "x64", "run", "hashcat", "Bundled")
 
 TOOLS = [
     {"id": 1, "name": "Nmap", "desc": "端口扫描器", "method": "exe",
-     "url": "https://nmap.org/dist/nmap-7.991-setup.exe", "dir": "nmap",
+     "url": "https://nmap.org/dist/nmap-7.95-setup.exe", "dir": "nmap",
      "args": ["/S"], "program_files": "Nmap"},
     {"id": 2, "name": "Masscan", "desc": "高速端口扫描器", "method": "source",
      "url": GH_PROXY + "https://github.com/robertdavidgraham/masscan/archive/refs/heads/master.zip", "dir": "masscan",
@@ -406,12 +406,22 @@ class DeployerGUI:
                                    check=False, capture_output=True)
                 else:
                     with py7zr.SevenZipFile(tmp) as z:
+                        for info in z.list():
+                            target = os.path.abspath(os.path.join(dest_dir, info.filename))
+                            if not target.startswith(os.path.abspath(dest_dir)):
+                                self.append_log("[SECURITY] 跳过路径遍历文件: %s" % info.filename)
+                                continue
                         z.extractall(dest_dir)
                 self._flatten(dest_dir)
             elif tool["method"] in ("zip", "source"):
                 self.append_log("[INFO] 正在解压 %s ..." % tool["name"])
                 with zipfile.ZipFile(tmp) as z:
-                    z.extractall(dest_dir)
+                    for info in z.infolist():
+                        target = os.path.abspath(os.path.join(dest_dir, info.filename))
+                        if not target.startswith(os.path.abspath(dest_dir)):
+                            self.append_log("[SECURITY] 跳过路径遍历文件: %s" % info.filename)
+                            continue
+                        z.extract(info, dest_dir)
                 self._flatten(dest_dir)
             if tool.get("pip"):
                 self._pip_install(tool, dest_dir)

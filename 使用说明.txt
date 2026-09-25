@@ -1,57 +1,68 @@
-Kali Tools Deployer v26.7.5 使用说明
+Kali Tools For Windows v1.1 使用说明
 =====================================
 
-【简介】
+[简介]
 将 Kali Linux 常用安全工具一键部署到 Windows 系统。
-支持两种部署模式：原生 Windows 工具包 和 WSL 完整 Kali 环境。
 
-【使用方法】
-1. 右键点击 "启动部署工具.bat"，选择 "以管理员身份运行"
-2. 根据菜单提示选择部署模式
+[使用方法]
+1. 右键 "启动部署工具.bat"，选择"以管理员身份运行"
+2. 输入工具编号（逗号分隔，如 1,3,7）或输入 A 全部部署
 3. 等待工具安装完成
-4. 桌面 KaliTools 文件夹里有所有工具的快捷方式
+4. 工具统一安装到 C:\SecTools 目录
 
-【两种模式说明】
+[支持的工具]（共 21 个）
 
-模式一：原生 Windows 工具包
-  - 下载各工具的 Windows 原生版本
-  - 优点：直接在 Windows 运行，性能好
-  - 缺点：部分工具功能不全，国内下载可能慢
+  编号  工具名          用途
+  ----  ----------      ----------------------------
+   1    Nmap            端口扫描器
+   2    Masscan         高速端口扫描器
+   3    Sqlmap          SQL注入检测利用工具
+   4    Hydra           多协议暴力破解工具
+   5    Hashcat         哈希密码破解工具
+   6    FFUF            Web模糊测试/目录爆破
+   7    Dirsearch       Web网站目录扫描工具
+   8    Gobuster        目录/文件/DNS暴力枚举
+   9    Whois           域名信息查询工具
+  10    Xray            Web漏洞扫描器（闭源，需手动下载）
+  11    Wireshark       网络协议分析器
+  12    Nuclei          模板化漏洞扫描器
+  13    Subfinder       子域名发现工具
+  14    Httpx           HTTP探测工具
+  15    RustScan        Rust高速端口扫描器
+  16    John            密码哈希破解工具
+  17    Mimikatz        Windows凭据提取工具
+  18    Responder       LLMNR/NBT-NS投毒工具
+  19    Evil-WinRM      Windows远程管理工具
+  20    Impacket        网络协议工具集
+  21    CrackMapExec    内网SMB/域渗透工具
 
-模式二：WSL 完整 Kali 环境（推荐）
-  - 通过 WSL 安装完整的 Kali Linux 系统
-  - 优点：工具最全，兼容性最好，apt 安装稳定
-  - 缺点：需要启用 WSL 功能，占用空间较大
+[部署目录]
+  工具安装目录：C:\SecTools\
+  日志文件：C:\SecTools\deploy_log.txt
 
-【工具目录】
-  工具安装目录：C:\KaliTools\
-  下载文件目录：C:\KaliTools\Downloads\
-  快捷方式目录：桌面\KaliTools\
+[图形化界面]
+  运行 KaliToolsGUI.exe 可通过图形界面选择部署工具
+  支持一键部署、卸载、查看日志等功能
 
-【常见问题】
-
-Q: 下载很慢或者失败怎么办？
-  A: 1. 挂代理后再试
-     2. 手动下载安装包放到 C:\KaliTools\Downloads\ 目录
-     3. 推荐使用 WSL 模式，更稳定
+[常见问题]
 
 Q: 提示不是管理员权限？
-  A: 右键 bat 文件，选择 "以管理员身份运行"
+A: 右键 bat 文件，选择"以管理员身份运行"
 
-Q: 7z 文件无法解压？
-  A: 安装 7-Zip 后自动支持，或者手动解压到 C:\KaliTools\
+Q: 下载很慢或失败？
+A: 1. 挂代理后再试
+   2. 使用 gh-proxy.com 代理 GitHub 下载
+   3. 手动下载后放入 C:\SecTools 对应目录
 
-Q: Metasploit 下载失败？
-  A: 国内网络访问 windows.metasploit.com 不稳定，建议：
-     1. 手动下载 msi 文件放到 Downloads 目录
-     2. 或者使用 WSL 模式安装
+Q: 工具无法运行？
+A: 部分工具需要 Python 环境，请确保已安装 Python 3
 
-Q: 安装的工具在哪里找？
-  A: 桌面的 KaliTools 文件夹里有快捷方式
+Q: 安全软件报毒？
+A: 安全工具可能被误报，建议添加信任
 
-【免责声明】
+[免责声明]
 本工具仅供学习和授权的安全测试使用。
 请勿用于任何非法用途，使用者自行承担责任。
 
-【版本】
-v2.0 - 2026
+[版本]
+v1.1 - 2026
