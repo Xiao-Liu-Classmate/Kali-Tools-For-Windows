@@ -7,6 +7,9 @@
 
 将 Kali Linux 常用安全工具一键部署到 Windows 系统。
 
+> **国内访问**：[Gitee 镜像仓库](https://gitee.com/xiao-xiao-liuA/Kali-Tools-For-Windows)
+> （与 GitHub 同步，源码以 GitHub 主仓库为准）
+
 ## 简介
 
 本工具支持通过图形化界面（GUI）、命令行（BAT）、PowerShell 脚本三种方式部署 21 个常用安全工具到 Windows。
