@@ -61,3 +61,28 @@ jobs:
           }
           gh release upload "$env:GITHUB_REF_NAME" dist/KaliToolsGUI.exe `
             --repo "$env:GITHUB_REPOSITORY" --clobber
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          # 把资产 SHA256 追加进 release notes，供下载者校验完整性
+          # （先过滤旧 hash 行再追加，保证重复运行幂等）
+          $hash = (Get-FileHash dist/KaliToolsGUI.exe -Algorithm SHA256).Hash.ToLower()
+          $body = gh release view "$env:GITHUB_REF_NAME" `
+            --repo "$env:GITHUB_REPOSITORY" --json body --jq .body
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $marker = 'KaliToolsGUI.exe SHA256:'
+          $kept = @(($body -split "\r?\n") |
+            Where-Object { $_ -notlike "*$marker*" })
+          $base = (($kept -join "`n").TrimEnd())
+          if ($base) {
+            $newBody = $base + "`n`n" + $marker + ' ' + $hash
+          } else {
+            $newBody = $marker + ' ' + $hash
+          }
+          $notes = New-TemporaryFile
+          Set-Content -Path $notes.FullName -Value $newBody -Encoding utf8
+          gh release edit "$env:GITHUB_REF_NAME" `
+            --repo "$env:GITHUB_REPOSITORY" --notes-file $notes.FullName
+          $editExit = $LASTEXITCODE
+          Remove-Item $notes.FullName -ErrorAction SilentlyContinue
+          if ($editExit -ne 0) { exit $editExit }
+          Write-Host "asset sha256: $hash"

@@ -3,6 +3,7 @@
 [![CI](https://github.com/Xiao-Liu-Classmate/Kali-Tools-For-Windows/actions/workflows/ci.yml/badge.svg)](https://github.com/Xiao-Liu-Classmate/Kali-Tools-For-Windows/actions/workflows/ci.yml)
 [![URL health](https://github.com/Xiao-Liu-Classmate/Kali-Tools-For-Windows/actions/workflows/url-health.yml/badge.svg)](https://github.com/Xiao-Liu-Classmate/Kali-Tools-For-Windows/actions/workflows/url-health.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Xiao-Liu-Classmate/Kali-Tools-For-Windows)](../../releases/latest)
 
 将 Kali Linux 常用安全工具一键部署到 Windows 系统。
 
@@ -44,6 +45,7 @@
 
 > **不想克隆仓库？** 直接前往 [Releases](../../releases/latest) 下载
 > `KaliToolsGUI.exe`（展开 Assets 区域），下载后直接以管理员身份运行即可。
+> 每个 Release 的说明中都附有 exe 的 SHA256 值，下载后可自行校验完整性。
 
 ### 方式一：图形化界面（推荐）
 
