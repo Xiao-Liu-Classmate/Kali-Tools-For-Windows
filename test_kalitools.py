@@ -9,6 +9,7 @@
   - _get_7zr 下载校验流程（mock，五个分支）
   - BAT 结构完整性（编码、括号、标签、版本一致性）
   - PS1 语法解析（仅 Windows）
+  - release.yml ↔ build_exe.bat 打包参数一致性（防漂移）
 
 运行：python test_kalitools.py   （或 python -m unittest -v）
 """
@@ -329,6 +330,87 @@ class TestPs1Syntax(unittest.TestCase):
         self.assertIn("break :mainLoop", text)
         self.assertIn(":wslLoop do {", text)
         self.assertIn("break :wslLoop", text)
+
+
+class TestReleaseBuildConsistency(unittest.TestCase):
+    """release.yml 自动打包参数必须与 build_exe.bat 保持一致（防漂移）。
+
+    两者各自演化会导致 CI 发布的 exe 与本地构建行为不一致，
+    此测试按词级序列比对 PyInstaller 命令参数。
+    """
+
+    def _bat_pyinstaller_args(self):
+        bat = read_text("build_exe.bat", encoding=GBK)
+        # 提取逻辑按 CRLF 切行，先显式校验，避免行尾损坏时报错指向别处
+        self.assertIn("\r\n", bat,
+                      "build_exe.bat must keep CRLF line endings")
+        self.assertNotIn("\n", bat.replace("\r\n", ""),
+                         "build_exe.bat has bare-LF line endings")
+        self.assertNotRegex(bat, r"\?{4,}",
+                            "GBK chinese corrupted in build_exe.bat")
+        marker = "python -m PyInstaller"
+        start = bat.find(marker)
+        self.assertNotEqual(start, -1,
+                            "PyInstaller command not found in build_exe.bat")
+        cmd_lines = []
+        for line in bat[start:].split("\r\n"):
+            cmd_lines.append(line.rstrip())
+            if not cmd_lines[-1].endswith("^"):
+                break
+        else:
+            self.fail("unterminated ^ continuation in build_exe.bat")
+        flat = " ".join(l.rstrip("^").strip() for l in cmd_lines)
+        return flat.split()
+
+    def _yml_pyinstaller_args(self):
+        yml = read_text(".github/workflows/release.yml")
+        lines = yml.splitlines()
+        for i, line in enumerate(lines):
+            if line.strip() != "run: >-":
+                continue
+            # 块内容缩进 = run 行缩进 + 2，按实际排版推导而非硬编码
+            run_indent = len(line) - len(line.lstrip())
+            min_indent = run_indent + 2
+            block = []
+            for nxt in lines[i + 1:]:
+                stripped = nxt.strip()
+                indent = len(nxt) - len(nxt.lstrip())
+                if stripped and indent < min_indent:
+                    break
+                if stripped:
+                    block.append(stripped)
+            if any("python -m PyInstaller" in l for l in block):
+                return " ".join(block).split()
+        self.fail("PyInstaller run block not found in release.yml")
+
+    def test_pyinstaller_args_match(self):
+        bat_args = self._bat_pyinstaller_args()
+        yml_args = self._yml_pyinstaller_args()
+        self.assertEqual(
+            bat_args, yml_args,
+            "PyInstaller args drifted between build_exe.bat "
+            "and .github/workflows/release.yml")
+
+    def test_pyinstaller_version_pinned_consistently(self):
+        # 两侧都必须 pin 同一版本，否则 CI 发布与本地构建行为漂移
+        bat = read_text("build_exe.bat", encoding=GBK)
+        yml = read_text(".github/workflows/release.yml")
+        pins = []
+        for name, src in (("build_exe.bat", bat),
+                          (".github/workflows/release.yml", yml)):
+            m = re.search(r"pip install pyinstaller==([\w.]+)", src)
+            self.assertIsNotNone(
+                m, "%s must pin pyinstaller==x.y.z (supply-chain safety)" % name)
+            pins.append(m.group(1))
+        self.assertEqual(pins[0], pins[1],
+                         "pyinstaller version pin drifted between "
+                         "build_exe.bat and release.yml")
+        # bat 的已装检查必须校验同一版本，否则装了旧版会跳过 pin 安装
+        gate = re.search(r"PyInstaller\.__version__=='([\w.]+)'", bat)
+        self.assertIsNotNone(
+            gate, "build_exe.bat must gate install on exact pinned version")
+        self.assertEqual(gate.group(1), pins[0],
+                         "build_exe.bat version gate drifted from pin")
 
 
 if __name__ == "__main__":

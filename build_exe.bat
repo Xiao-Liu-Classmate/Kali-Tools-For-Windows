@@ -12,10 +12,10 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-python -c "import PyInstaller" >nul 2>&1
+python -c "import PyInstaller, sys; sys.exit(0 if PyInstaller.__version__=='6.22.2' else 1)" >nul 2>&1
 if %errorlevel% neq 0 (
     echo [INFO] 正在安装 PyInstaller...
-    python -m pip install pyinstaller -i https://pypi.tuna.tsinghua.edu.cn/simple
+    python -m pip install pyinstaller==6.22.2 -i https://pypi.tuna.tsinghua.edu.cn/simple
     if errorlevel 1 (echo [ERROR] PyInstaller install failed & pause & exit /b 1)
 )
 
