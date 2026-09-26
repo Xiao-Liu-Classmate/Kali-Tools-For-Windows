@@ -1,0 +1,63 @@
+name: Release build
+
+# 推送 V* 形式 tag 时自动构建 GUI exe 并发布/更新 Release 资产。
+# 与手动发布流程一致：裸 exe 作为资产上传（--clobber 幂等覆盖）。
+
+on:
+  push:
+    tags:
+      - "V*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller==6.22.2
+
+      - name: Run tests before release
+        run: python -m unittest -v test_kalitools test_check_urls
+
+      - name: Build GUI exe
+        # 与 build_exe.bat 的打包参数保持一致
+        run: >-
+          python -m PyInstaller --onefile --windowed --uac-admin
+          --name KaliToolsGUI --distpath dist --workpath build
+          --specpath build --noconfirm KaliToolsGUI.py
+
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist/KaliToolsGUI.exe")) {
+            Write-Error "build failed: dist/KaliToolsGUI.exe missing"
+            exit 1
+          }
+          Get-Item "dist/KaliToolsGUI.exe" | Format-List Name, Length
+
+      - name: Create or update release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$env:GITHUB_REF_NAME" --repo "$env:GITHUB_REPOSITORY" 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create "$env:GITHUB_REF_NAME" `
+              --repo "$env:GITHUB_REPOSITORY" `
+              --title "$env:GITHUB_REF_NAME" `
+              --generate-notes
+          }
+          gh release upload "$env:GITHUB_REF_NAME" dist/KaliToolsGUI.exe `
+            --repo "$env:GITHUB_REPOSITORY" --clobber
