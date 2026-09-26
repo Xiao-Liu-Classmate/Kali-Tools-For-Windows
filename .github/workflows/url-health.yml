@@ -1,0 +1,33 @@
+name: URL health
+
+# 链接腐烂是本项目的主要失效模式：上游 release 改名/删除后部署会失败。
+# 每周自动检查所有下载源，失效则让工作流标红，便于及时替换。
+on:
+  schedule:
+    - cron: "0 3 * * 1" # 每周一 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check download URLs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Check all URLs (config + BAT + PS1)
+        run: python scripts/check_urls.py --timeout 30 --json url_report.json
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: url-report
+          path: url_report.json

@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit tests (offline)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Syntax check
+        run: |
+          python -m py_compile KaliToolsGUI.py scripts/check_urls.py
+          python -m py_compile test_kalitools.py test_check_urls.py
+
+      - name: Run offline regression tests
+        run: python -m unittest -v test_kalitools test_check_urls
+
+      - name: PowerShell syntax check
+        shell: pwsh
+        run: |
+          $e = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            "$PWD/Kali-Tools-Deployer.ps1", [ref]$null, [ref]$e)
+          if ($e.Count -gt 0) {
+            $e | ForEach-Object { Write-Error "L$($_.Extent.StartLineNumber): $($_.Message)" }
+            exit 1
+          }
+          Write-Host "PS1 parse OK"
