@@ -37,7 +37,13 @@
 ### 方式一：图形化界面（推荐）
 
 ```
-双击 KaliToolsGUI.exe（需管理员权限）
+右键 dist\KaliToolsGUI.exe → 以管理员身份运行
+```
+
+若 dist 目录不存在，可重新构建：
+
+```bat
+build_exe.bat
 ```
 
 ### 方式二：命令行 BAT 脚本
@@ -53,6 +59,16 @@
 右键 启动部署工具.bat → 以管理员身份运行
 选择部署模式
 ```
+
+## 下载源验证
+
+所有工具下载 URL 均经过实际连通性测试（HEAD 请求验证），失效链接已替换：
+
+- GitHub Release 二进制：Gobuster、FFUF、Nuclei、Subfinder、Httpx、RustScan、Mimikatz
+- 源码仓库：Masscan、Hydra、Sqlmap、Dirsearch、John、Responder、Evil-WinRM、Impacket、CrackMapExec
+- 官方站点：Nmap、Hashcat、Wireshark、Whois (Sysinternals)
+
+GUI 内置 SHA256 校验机制（工具配置含 `sha256` 字段时自动校验）。
 
 ## 部署目录
 

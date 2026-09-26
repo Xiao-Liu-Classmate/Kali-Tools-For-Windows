@@ -2,6 +2,8 @@ import os
 import sys
 import time
 import queue
+import json
+import hashlib
 import threading
 import datetime
 import tkinter as tk
@@ -22,52 +24,105 @@ TOOLS = [
     {"id": 1, "name": "Nmap", "desc": "端口扫描器", "method": "exe",
      "url": "https://nmap.org/dist/nmap-7.95-setup.exe", "dir": "nmap",
      "args": ["/S"], "program_files": "Nmap"},
-    {"id": 2, "name": "Masscan", "desc": "高速端口扫描器", "method": "source",
+    {"id": 2, "name": "Masscan", "desc": "高速端口扫描", "method": "source",
      "url": GH_PROXY + "https://github.com/robertdavidgraham/masscan/archive/refs/heads/master.zip", "dir": "masscan",
      "hint": "源码已下载，需 Visual Studio 编译后使用"},
-    {"id": 3, "name": "Sqlmap", "desc": "SQL 注入检测工具", "method": "source",
+    {"id": 3, "name": "Sqlmap", "desc": "SQL 注入检测", "method": "source",
      "url": GH_PROXY + "https://github.com/sqlmapproject/sqlmap/archive/refs/heads/master.zip", "py": True, "dir": "sqlmap"},
     {"id": 4, "name": "Hydra", "desc": "多协议暴力破解", "method": "source",
      "url": GH_PROXY + "https://github.com/vanhauser-thc/thc-hydra/archive/refs/heads/master.zip", "dir": "hydra",
-     "hint": "源码已下载，需编译后使用"},
+     "hint": "源码已下载，需编译后使用（官方无 Windows 二进制）"},
     {"id": 5, "name": "Hashcat", "desc": "哈希密码破解", "method": "7z",
-     "url": GH_PROXY + "https://github.com/hashcat/hashcat/releases/download/v6.2.6/hashcat-6.2.6.7z", "dir": "hashcat"},
+     "url": "https://hashcat.net/files/hashcat-6.2.6.7z", "dir": "hashcat"},
     {"id": 6, "name": "FFUF", "desc": "Web 模糊测试", "method": "zip",
      "url": GH_PROXY + "https://github.com/ffuf/ffuf/releases/download/v2.1.0/ffuf_2.1.0_windows_amd64.zip", "dir": "ffuf"},
     {"id": 7, "name": "Dirsearch", "desc": "Web 目录扫描", "method": "source",
      "url": GH_PROXY + "https://github.com/maurosoria/dirsearch/archive/refs/heads/master.zip", "py": True, "dir": "dirsearch"},
-    {"id": 8, "name": "CrackMapExec", "desc": "内网 SMB / 域渗透", "method": "source",
-     "url": GH_PROXY + "https://github.com/Porchetta-Industries/CrackMapExec/archive/refs/heads/master.zip", "py": True, "dir": "crackmapexec"},
+    {"id": 8, "name": "Gobuster", "desc": "目录/子域名爆破", "method": "zip",
+     "url": GH_PROXY + "https://github.com/OJ/gobuster/releases/download/v3.6.0/gobuster_Windows_x86_64.zip", "dir": "gobuster"},
     {"id": 9, "name": "Whois", "desc": "域名信息查询", "method": "zip",
      "url": "https://download.sysinternals.com/files/WhoIs.zip", "dir": "whois"},
     {"id": 10, "name": "Xray", "desc": "Web 漏洞扫描(闭源)", "method": "empty", "url": "", "dir": "xray"},
     {"id": 11, "name": "Wireshark", "desc": "网络抓包分析", "method": "exe",
-     "url": "https://www.wireshark.org/download/win64/Wireshark-latest-x64.exe", "dir": "wireshark",
+     "url": "https://2.na.dl.wireshark.org/win64/Wireshark-4.6.9-x64.exe", "dir": "wireshark",
      "args": ["/S"], "program_files": "Wireshark"},
-    {"id": 12, "name": "Gobuster", "desc": "目录/子域名爆破", "method": "zip",
-     "url": GH_PROXY + "https://github.com/OJ/gobuster/releases/download/v3.6.0/gobuster_Windows_x86_64.zip", "dir": "gobuster"},
-    {"id": 13, "name": "Nuclei", "desc": "漏洞扫描器", "method": "zip",
+    {"id": 12, "name": "Nuclei", "desc": "漏洞扫描器", "method": "zip",
      "url": GH_PROXY + "https://github.com/projectdiscovery/nuclei/releases/download/v3.3.8/nuclei_3.3.8_windows_amd64.zip", "dir": "nuclei"},
-    {"id": 14, "name": "Subfinder", "desc": "子域名发现", "method": "zip",
+    {"id": 13, "name": "Subfinder", "desc": "子域名发现", "method": "zip",
      "url": GH_PROXY + "https://github.com/projectdiscovery/subfinder/releases/download/v2.6.7/subfinder_2.6.7_windows_amd64.zip", "dir": "subfinder"},
-    {"id": 15, "name": "Httpx", "desc": "HTTP 存活探测", "method": "zip",
+    {"id": 14, "name": "Httpx", "desc": "HTTP 存活探测", "method": "zip",
      "url": GH_PROXY + "https://github.com/projectdiscovery/httpx/releases/download/v1.6.10/httpx_1.6.10_windows_amd64.zip", "dir": "httpx"},
-    {"id": 16, "name": "RustScan", "desc": "快速端口扫描", "method": "zip",
-     "url": GH_PROXY + "https://github.com/bee-san/RustScan/releases/download/2.3.0/rustscan-2.3.0-x86_64-windows.zip", "dir": "rustscan"},
-    {"id": 17, "name": "John the Ripper", "desc": "密码破解", "method": "source",
+    {"id": 15, "name": "RustScan", "desc": "快速端口扫描", "method": "zip",
+     "url": GH_PROXY + "https://github.com/bee-san/RustScan/releases/download/2.4.1/x86_64-windows-rustscan.exe.zip", "dir": "rustscan"},
+    {"id": 16, "name": "John", "desc": "密码哈希破解", "method": "source",
      "url": GH_PROXY + "https://github.com/openwall/john/archive/refs/heads/bleeding-jumbo.zip", "dir": "john",
      "hint": "源码已下载，需编译后使用（Windows 无官方二进制）"},
-    {"id": 18, "name": "Mimikatz", "desc": "Windows 凭据提取", "method": "zip",
+    {"id": 17, "name": "Mimikatz", "desc": "Windows 凭据提取", "method": "zip",
      "url": GH_PROXY + "https://github.com/gentilkiwi/mimikatz/releases/download/2.2.0-20220919/mimikatz_trunk.zip", "dir": "mimikatz"},
-    {"id": 19, "name": "Responder", "desc": "LLMNR/NBT 投毒", "method": "source",
+    {"id": 18, "name": "Responder", "desc": "LLMNR/NBT 投毒", "method": "source",
      "url": GH_PROXY + "https://github.com/lgandx/Responder/archive/refs/heads/master.zip", "py": True, "dir": "responder"},
-    {"id": 20, "name": "Evil-WinRM", "desc": "Windows 远程管理", "method": "source",
+    {"id": 19, "name": "Evil-WinRM", "desc": "Windows 远程管理", "method": "source",
      "url": GH_PROXY + "https://github.com/Hackplayers/evil-winrm/archive/refs/heads/master.zip", "py": True, "dir": "evil-winrm"},
-    {"id": 21, "name": "Impacket", "desc": "网络协议工具集", "method": "source",
+    {"id": 20, "name": "Impacket", "desc": "网络协议工具集", "method": "source",
      "url": GH_PROXY + "https://github.com/fortra/impacket/archive/refs/heads/master.zip", "py": True, "pip": True, "dir": "impacket"},
+    {"id": 21, "name": "CrackMapExec", "desc": "内网 SMB/域渗透", "method": "source",
+     "url": GH_PROXY + "https://github.com/Porchetta-Industries/CrackMapExec/archive/refs/heads/master.zip",
+     "py": True, "dir": "crackmapexec",
+     "hint": "源码已下载，需 pip install 后使用"},
 ]
 
 VERSION = "1.1.0"
+
+# 辅助文件（如 7zr.exe）的 SHA256，键为原始 URL；由 deploy_config.json 填充
+HELPER_HASHES = {}
+
+
+def load_config_overrides():
+    """从 deploy_config.json 覆盖 TOOLS 的 url/method/dir/sha256 字段。
+
+    deploy_config.json 是下载 URL、下载方法、目录与哈希的权威配置，
+    GUI/BAT/PS1 三方引用同一套下载源。JSON 中的 github.com URL
+    自动加 GH_PROXY 前缀。结构异常时静默跳过，不影响 GUI 启动。
+    """
+    cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "deploy_config.json")
+    if not os.path.isfile(cfg_path):
+        return 0
+    try:
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        by_id = {}
+        for item in cfg.get("tools", []) or []:
+            if not isinstance(item, dict):
+                continue
+            try:
+                by_id[int(item.get("id"))] = item
+            except (TypeError, ValueError):
+                continue
+        n = 0
+        for tool in TOOLS:
+            item = by_id.get(tool.get("id"))
+            if not isinstance(item, dict):
+                continue
+            url = item.get("url")
+            if isinstance(url, str) and url.strip():
+                if url.startswith("https://github.com/") and not url.startswith(GH_PROXY):
+                    url = GH_PROXY + url
+                tool["url"] = url
+            for key in ("method", "dir", "sha256"):
+                val = item.get(key)
+                if val:
+                    tool[key] = val
+            n += 1
+        for helper in cfg.get("helper_files", []) or []:
+            if isinstance(helper, dict) and helper.get("url") and helper.get("sha256"):
+                HELPER_HASHES[helper["url"]] = helper["sha256"]
+        return n
+    except Exception:
+        return 0
+
+
+CONFIG_OVERRIDE_COUNT = load_config_overrides()
 
 
 def log_line(msg, fh=None):
@@ -115,6 +170,25 @@ def download(url, dest, progress=None):
             if attempt < 2:
                 time.sleep(2 * (attempt + 1))
     raise last_err
+
+
+def sha256_of(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(65536)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest().upper()
+
+
+def verify_sha256(path, expected):
+    """校验文件 SHA256；expected 为空时跳过校验并返回 True。"""
+    if not expected:
+        return True
+    actual = sha256_of(path)
+    return actual == expected.upper()
 
 
 class DeployerGUI:
@@ -393,6 +467,15 @@ class DeployerGUI:
             self.append_log("[INFO] 下载 %s ..." % tool["url"])
             download(tool["url"], tmp, progress=lambda p: self._msg_queue.put(
                 ("progress", p)))
+            if tool.get("sha256"):
+                if verify_sha256(tmp, tool["sha256"]):
+                    self.append_log("[INFO] SHA256 校验通过")
+                else:
+                    try:
+                        os.remove(tmp)
+                    except OSError:
+                        pass
+                    raise RuntimeError("SHA256 校验失败，文件已删除（可能被篡改）")
             if tool["method"] == "exe":
                 args = tool.get("args") or ["/S"]
                 self.append_log("[INFO] 正在静默安装 %s ..." % tool["name"])
@@ -447,17 +530,38 @@ class DeployerGUI:
             self.append_log("[WARN] %s 依赖安装失败: %s" % (tool["name"], r.stderr[-300:]))
 
     def _get_7zr(self):
+        """获取 7zr.exe。
+
+        主源 7-zip.org/a/7zr.exe 是滚动版本 URL，无法固定哈希（同 Nmap 策略，
+        官方 HTTPS 直接信任）；备用源为固定版本 24.09，下载后强制 SHA256 校验。
+        """
         exe = os.path.join(TOOLS_ROOT, "7zr.exe")
-        if not os.path.isfile(exe):
-            self.append_log("[INFO] 下载 7-Zip 解压器 ...")
+        if os.path.isfile(exe):
+            return exe
+        self.append_log("[INFO] 下载 7-Zip 解压器 ...")
+        try:
+            download("https://www.7-zip.org/a/7zr.exe", exe)
+            return exe
+        except Exception as e:
+            self.append_log("[WARN] 7zr.exe 主源下载失败: %s，尝试备用源" % e)
             try:
-                download("https://www.7-zip.org/a/7zr.exe", exe)
-            except Exception:
-                try:
-                    download(GH_PROXY + "https://github.com/ip7z/7zip/releases/download/24.09/7zr.exe", exe)
-                except Exception as e:
-                    self.append_log("[WARN] 7zr.exe 下载失败: %s" % e)
-                    return None
+                os.remove(exe)
+            except OSError:
+                pass
+        gh_raw = "https://github.com/ip7z/7zip/releases/download/24.09/7zr.exe"
+        expected = HELPER_HASHES.get(gh_raw)
+        try:
+            download(GH_PROXY + gh_raw, exe)
+        except Exception as e:
+            self.append_log("[WARN] 7zr.exe 下载失败: %s" % e)
+            return None
+        if expected and not verify_sha256(exe, expected):
+            self.append_log("[WARN] 7zr.exe SHA256 校验失败，已删除")
+            try:
+                os.remove(exe)
+            except OSError:
+                pass
+            return None
         return exe
 
     def _register_program_files(self, tool):

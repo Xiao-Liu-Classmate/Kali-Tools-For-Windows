@@ -5,7 +5,7 @@ REM ============================================================================
 
 net session >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] è¯·ä»¥ç®¡ç†å‘˜èº«ä»½è¿è¡Œæ­¤è„šæœ¬ã€‚
+    echo [ERROR] ÇëÒÔ¹ÜÀíÔ±Éí·İÔËĞĞ´Ë½Å±¾¡£
     pause
     exit /b 1
 )
@@ -14,30 +14,30 @@ echo ============================================================
 echo    Kali Tools Uninstall Script
 echo ============================================================
 echo.
-echo  æ­¤æ“ä½œå°†åˆ é™¤ä»¥ä¸‹å†…å®¹:
-echo    - C:\SecTools ç›®å½•åŠæ‰€æœ‰å·¥å…·
-echo    - ä»ç³»ç»Ÿ PATH ä¸­ç§»é™¤å·¥å…·è·¯å¾„
+echo  ´Ë²Ù×÷½«É¾³ıÒÔÏÂÄÚÈİ:
+echo    - C:\SecTools Ä¿Â¼¼°ËùÓĞ¹¤¾ß
+echo    - ´ÓÏµÍ³ PATH ÖĞÒÆ³ı¹¤¾ßÂ·¾¶
 echo.
 echo ============================================================
 pause
 
-REM --- åˆ é™¤å·¥å…·ç›®å½• ---
+REM --- É¾³ı¹¤¾ßÄ¿Â¼ ---
 if exist "C:\SecTools" (
-    echo [INFO] åˆ é™¤ C:\SecTools ...
+    echo [INFO] É¾³ı C:\SecTools ...
     rmdir /s /q "C:\SecTools"
-    echo [INFO] å·²åˆ é™¤
+    echo [INFO] ÒÑÉ¾³ı
 ) else (
-    echo [INFO] C:\SecTools ä¸å­˜åœ¨ï¼Œè·³è¿‡
+    echo [INFO] C:\SecTools ²»´æÔÚ£¬Ìø¹ı
 )
 
-REM --- ä» PATH ä¸­ç§»é™¤ ---
-echo [INFO] æ¸…ç†ç³»ç»Ÿ PATH...
+REM --- ´Ó PATH ÖĞÒÆ³ı ---
+echo [INFO] ÇåÀíÏµÍ³ PATH...
 powershell -NoProfile -Command "$p=[Environment]::GetEnvironmentVariable('PATH','Machine');$parts=@($p.Split(';') | Where-Object { $_ -and $_ -notlike '*C:\SecTools*' });[Environment]::SetEnvironmentVariable('PATH',($parts -join ';'),'Machine')"
-echo [INFO] PATH å·²æ¸…ç†
+echo [INFO] PATH ÒÑÇåÀí
 
 echo.
 echo ============================================================
-echo  å¸è½½å®Œæˆ!
+echo  Ğ¶ÔØÍê³É!
 echo ============================================================
 pause
 exit /b 0

@@ -1,102 +1,108 @@
 @echo off
+chcp 936 >nul
 REM =============================================================================
 REM SecTools_Deploy.bat - Kali Tools Deployment Script
-REM ä»…å…è®¸ä¸ªäººå­¦ä¹ ã€å®Œå…¨æŽˆæƒçš„å®žéªŒçŽ¯å¢ƒä½¿ç”¨
-REM ä¸¥ç¦æ‰«æã€æ¸—é€ä»»ä½•æ²¡æœ‰èŽ·å¾—ä¹¦é¢æŽˆæƒçš„è®¾å¤‡ã€ç³»ç»Ÿ
+REM ½öÔÊÐí¸öÈËÑ§Ï°¡¢ÍêÈ«ÊÚÈ¨µÄÊµÑé»·¾³Ê¹ÓÃ
+REM ÑÏ½ûÉ¨Ãè¡¢ÉøÍ¸ÈÎºÎÃ»ÓÐ»ñµÃÊéÃæÊÚÈ¨µÄÉè±¸¡¢ÏµÍ³
 REM =============================================================================
 
-REM --- ç®¡ç†å‘˜æƒé™æ£€æŸ¥ ---
-net session >nul 2>&1
+REM --- ¹ÜÀíÔ±È¨ÏÞ¼ì²é ---
+fltmc >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] è¯·ä»¥ç®¡ç†å‘˜èº«ä»½è¿è¡Œæ­¤è„šæœ¬ã€‚
+    echo [ERROR] ÇëÒÔ¹ÜÀíÔ±Éí·ÝÔËÐÐ´Ë½Å±¾¡£
     pause
     exit /b 1
 )
 
-REM --- å…è´£å£°æ˜Ž ---
+REM --- ÃâÔðÉùÃ÷ ---
 echo ============================================================
-echo    Kali Tools Deployer - å®‰å…¨å·¥å…·ä¸€é”®éƒ¨ç½²
+echo    Kali Tools Deployer - °²È«¹¤¾ßÒ»¼ü²¿Êð
 echo ============================================================
 echo.
-echo  æœ¬å·¥å…·ä»…å…è®¸ä¸ªäººå­¦ä¹ ã€å®Œå…¨æŽˆæƒçš„å®žéªŒçŽ¯å¢ƒä½¿ç”¨ã€‚
-echo  ä¸¥ç¦æ‰«æã€æ¸—é€ä»»ä½•æ²¡æœ‰èŽ·å¾—ä¹¦é¢æŽˆæƒçš„è®¾å¤‡ã€ç³»ç»Ÿã€‚
-echo  éžæ³•ä½¿ç”¨äº§ç”Ÿå…¨éƒ¨æ³•å¾‹è´£ä»»ï¼Œå…¨éƒ¨ç”±æ“ä½œè€…æœ¬äººæ‰¿æ‹…ã€‚
+echo  ±¾¹¤¾ß½öÔÊÐí¸öÈËÑ§Ï°¡¢ÍêÈ«ÊÚÈ¨µÄÊµÑé»·¾³Ê¹ÓÃ¡£
+echo  ÑÏ½ûÉ¨Ãè¡¢ÉøÍ¸ÈÎºÎÃ»ÓÐ»ñµÃÊéÃæÊÚÈ¨µÄÉè±¸¡¢ÏµÍ³¡£
+echo  ·Ç·¨Ê¹ÓÃ²úÉúÈ«²¿·¨ÂÉÔðÈÎ£¬È«²¿ÓÉ²Ù×÷Õß±¾ÈË³Ðµ£¡£
 echo.
 echo ============================================================
 pause
 
-REM --- çŽ¯å¢ƒå˜é‡ ---
+REM --- »·¾³±äÁ¿ ---
 set "TOOLS_ROOT=C:\SecTools"
 set "LOG_FILE=%TOOLS_ROOT%\deploy_log.txt"
 if not exist "%TOOLS_ROOT%" mkdir "%TOOLS_ROOT%"
 
-REM --- è‡ªåŠ¨ä¾èµ–æ£€æµ‹ ---
-echo [INFO] æ£€æµ‹ Git...
+REM --- ×Ô¶¯ÒÀÀµ¼ì²â ---
+echo [INFO] ¼ì²â Git...
 git --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [INFO] Git æœªå®‰è£…ï¼Œæ­£åœ¨ä¸‹è½½...
-    powershell -Command "$u='https://mirrors.tuna.tsinghua.edu.cn/github-release/git-for-windows/git/2.55.0.windows.3/Git-2.55.0.3-64-bit.exe';$o='%TEMP%\Git-Install.exe';(New-Object Net.WebClient).DownloadFile($u,$o);Start-Process $o '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES' -Wait" 2>nul
-    echo [INFO] Git å®‰è£…å®Œæˆ
+    echo [INFO] Git Î´°²×°£¬ÕýÔÚÏÂÔØ°²×°...
+    powershell -Command "$o='%TEMP%\Git-Install.exe';if(Test-Path $o){Remove-Item $o -Force -EA SilentlyContinue};try{$u='https://registry.npmmirror.com/-/binary/git-for-windows/v2.55.0.windows.3/Git-2.55.0.3-64-bit.exe';(New-Object Net.WebClient).DownloadFile($u,$o)}catch{$u2='https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.3/Git-2.55.0.3-64-bit.exe';(New-Object Net.WebClient).DownloadFile($u2,$o)};if(Test-Path $o){Start-Process $o '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES' -Wait}else{exit 1}"
+    if exist "C:\Program Files\Git\cmd" set "PATH=%PATH%;C:\Program Files\Git\cmd"
+    git --version >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] Git °²×°Ê§°Ü£¬Ô´ÂëÀà¹¤¾ß(3/7/18/19/20/21)½«ÎÞ·¨²¿Êð
+        echo [ERROR] ÇëÊÖ¶¯°²×° Git: https://git-scm.com/download/win
+    ) else (
+        echo [INFO] Git °²×°Íê³É
+    )
 ) else (
-    echo [INFO] Git å·²å®‰è£…
+    echo [INFO] Git ÒÑ°²×°
 )
 
-REM --- å·¥å…·åˆ—è¡¨ ---
+REM --- ¹¤¾ßÁÐ±í ---
 echo.
 echo ============================================================
-echo    å·¥å…·éƒ¨ç½²åˆ—è¡¨
+echo    ¹¤¾ß²¿ÊðÁÐ±í
 echo ============================================================
 echo.
-echo   1  Nmap          ç«¯å£æ‰«æå™¨
-echo   2  Masscan       é«˜é€Ÿç«¯å£æ‰«æå™¨
-echo   3  Sqlmap        SQLæ³¨å…¥æ£€æµ‹åˆ©ç”¨å·¥å…·
-echo   4  Hydra         å¤šåè®®æš´åŠ›ç ´è§£å·¥å…·
-echo   5  Hashcat       å“ˆå¸Œå¯†ç ç ´è§£å·¥å…·
-echo   6  FFUF          Webæ¨¡ç³Šæµ‹è¯•/ç›®å½•çˆ†ç ´
-echo   7  Dirsearch     Webç½‘ç«™ç›®å½•æ‰«æå·¥å…·
-echo   8  Gobuster      ç›®å½•/æ–‡ä»¶/DNSæš´åŠ›æžšä¸¾
-echo   9  Whois         åŸŸåä¿¡æ¯æŸ¥è¯¢å·¥å…·
-echo  10  Xray          Webæ¼æ´žæ‰«æå™¨(é—­æº)
-echo  11  Wireshark     ç½‘ç»œåè®®åˆ†æžå™¨
-echo  12  Nuclei        æ¨¡æ¿åŒ–æ¼æ´žæ‰«æå™¨
-echo  13  Subfinder     å­åŸŸåå‘çŽ°å·¥å…·
-echo  14  Httpx         HTTPæŽ¢æµ‹å·¥å…·
-echo  15  RustScan      Rusté«˜é€Ÿç«¯å£æ‰«æå™¨
-echo  16  John          å¯†ç å“ˆå¸Œç ´è§£å·¥å…·
-echo  17  Mimikatz      Windowså‡­æ®æå–å·¥å…·
-echo  18  Responder     LLMNR/NBT-NSæŠ•æ¯’å·¥å…·
-echo  19  Evil-WinRM    Windowsè¿œç¨‹ç®¡ç†å·¥å…·
-echo  20  Impacket      ç½‘ç»œåè®®å·¥å…·é›†
-echo  21  CrackMapExec  å†…ç½‘SMB/åŸŸæ¸—é€å·¥å…·
+echo   1  Nmap          ¶Ë¿ÚÉ¨ÃèÆ÷
+echo   2  Masscan       ¸ßËÙ¶Ë¿ÚÉ¨ÃèÆ÷(Ô´ÂëÐè±àÒë)
+echo   3  Sqlmap        SQL×¢Èë¼ì²âÀûÓÃ¹¤¾ß
+echo   4  Hydra         ¶àÐ­Òé±©Á¦ÆÆ½â¹¤¾ß(Ô´ÂëÐè±àÒë)
+echo   5  Hashcat       ¹þÏ£ÃÜÂëÆÆ½â¹¤¾ß
+echo   6  FFUF          WebÄ£ºý²âÊÔ/Ä¿Â¼±¬ÆÆ
+echo   7  Dirsearch     WebÍøÕ¾Ä¿Â¼É¨Ãè¹¤¾ß
+echo   8  Gobuster      Ä¿Â¼/ÎÄ¼þ/DNS±©Á¦Ã¶¾Ù
+echo   9  Whois         ÓòÃûÐÅÏ¢²éÑ¯¹¤¾ß
+echo  10  Xray          WebÂ©¶´É¨ÃèÆ÷(±ÕÔ´,ÐèÊÖ¶¯ÏÂÔØ)
+echo  11  Wireshark     ÍøÂçÐ­Òé·ÖÎöÆ÷
+echo  12  Nuclei        Ä£°å»¯Â©¶´É¨ÃèÆ÷
+echo  13  Subfinder     ×ÓÓòÃû·¢ÏÖ¹¤¾ß
+echo  14  Httpx         HTTPÌ½²â¹¤¾ß
+echo  15  RustScan      Rust¸ßËÙ¶Ë¿ÚÉ¨ÃèÆ÷
+echo  16  John          ÃÜÂë¹þÏ£ÆÆ½â¹¤¾ß(Ô´ÂëÐè±àÒë)
+echo  17  Mimikatz      WindowsÆ¾¾ÝÌáÈ¡¹¤¾ß
+echo  18  Responder     LLMNR/NBT-NSÍ¶¶¾¹¤¾ß
+echo  19  Evil-WinRM    WindowsÔ¶³Ì¹ÜÀí¹¤¾ß
+echo  20  Impacket      ÍøÂçÐ­Òé¹¤¾ß¼¯
+echo  21  CrackMapExec  ÄÚÍøSMB/ÓòÉøÍ¸¹¤¾ß
 echo.
-echo   A  å…¨éƒ¨éƒ¨ç½²
+echo   A  È«²¿²¿Êð
 echo.
 echo ============================================================
 
-REM --- ç”¨æˆ·è¾“å…¥ ---
+REM --- ÓÃ»§ÊäÈë ---
 set "INPUT="
-set /p "INPUT=è¯·è¾“å…¥ç¼–å·(é€—å·åˆ†éš”ï¼Œå¦‚ 1,3,7 æˆ– A å…¨éƒ¨): "
+set /p "INPUT=ÇëÊäÈë±àºÅ(¶ººÅ·Ö¸ô£¬Èç 1,3,7 »ò A È«²¿): "
 
 if "%INPUT%"=="" (
-    echo [ERROR] æœªè¾“å…¥ä»»ä½•ç¼–å·
+    echo [ERROR] Î´ÊäÈëÈÎºÎ±àºÅ
     pause
     exit /b 1
 )
 
-REM ä¸­æ–‡é€—å·æ›¿æ¢ä¸ºè‹±æ–‡é€—å·
-set "INPUT=%INPUT:ï¼Œ=%"
+REM È«½Ç¶ººÅÌæ»»Îª°ë½Ç¶ººÅ
+set "INPUT=%INPUT:£¬=,%"
 
-REM åˆå§‹åŒ–æ—¥å¿—
-echo [%date% %time%] éƒ¨ç½²å¼€å§‹ >> "%LOG_FILE%"
+REM ³õÊ¼»¯ÈÕÖ¾
+echo [%date% %time%] ²¿Êð¿ªÊ¼ >> "%LOG_FILE%"
 
-REM --- å¤„ç†è¾“å…¥ ---
-REM æ”¯æŒ A/a éƒ¨ç½²å…¨éƒ¨
+REM --- ´¦ÀíÊäÈë ---
 if /i "%INPUT%"=="A" (
     call :deploy_all
     goto :done
 )
 
-REM é€ä¸ªå¤„ç†ç¼–å·
 for %%i in (%INPUT%) do (
     call :deploy_one %%i
 )
@@ -104,7 +110,7 @@ for %%i in (%INPUT%) do (
 goto :done
 
 REM ============================================================
-REM éƒ¨ç½²å…¨éƒ¨
+REM ²¿ÊðÈ«²¿
 REM ============================================================
 :deploy_all
 call :deploy_one 1
@@ -131,221 +137,267 @@ call :deploy_one 21
 goto :eof
 
 REM ============================================================
-REM éƒ¨ç½²å•ä¸ªå·¥å…·
+REM Hashcat ×¨ÓÃ×Ó¹ý³Ì£¨¶ÀÁ¢ÓÚ IF ¿é£¬±ÜÃâ % ±äÁ¿ÑÓ³ÙÕ¹¿ªÎÊÌâ£©
+REM ============================================================
+:deploy_hashcat
+echo [INFO] ²¿Êð Hashcat...
+echo [%date% %time%] Hashcat >> "%LOG_FILE%"
+if not exist "%TOOLS_ROOT%\hashcat" mkdir "%TOOLS_ROOT%\hashcat"
+set "SEVENZ=C:\Program Files\7-Zip\7z.exe"
+if not exist "%SEVENZ%" set "SEVENZ=C:\Program Files (x86)\7-Zip\7z.exe"
+if not exist "%SEVENZ%" (
+    echo [ERROR] Hashcat Îª 7z ¸ñÊ½£¬ÇëÏÈ°²×° 7-Zip ºóÖØÊÔ
+    goto :eof
+)
+powershell -Command "$o='%TEMP%\hashcat.7z';$u='https://hashcat.net/files/hashcat-6.2.6.7z';if(Test-Path $o){Remove-Item $o -Force};(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){exit 0}else{exit 1}" >nul
+if errorlevel 1 (
+    echo [ERROR] Hashcat ÏÂÔØÊ§°Ü
+    goto :eof
+)
+"%SEVENZ%" x "%TEMP%\hashcat.7z" -o"%TOOLS_ROOT%\hashcat" -y >nul
+echo [INFO] Hashcat Íê³É
+goto :eof
+
+REM ============================================================
+REM ²¿Êðµ¥¸ö¹¤¾ß
 REM ============================================================
 :deploy_one
 set "NUM=%~1"
 if "%NUM%"=="" goto :eof
 
 if "%NUM%"=="1" (
-    echo [INFO] éƒ¨ç½² Nmap...
+    echo [INFO] ²¿Êð Nmap...
     echo [%date% %time%] Nmap >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\nmap" mkdir "%TOOLS_ROOT%\nmap"
-    powershell -Command "$u='https://nmap.org/dist/nmap-7.95-setup.exe';$o='%TEMP%\nmap-setup.exe';(New-Object Net.WebClient).DownloadFile($u,$o);Start-Process $o '/S' -Wait" 2>nul
-    if exist "C:\Program Files (x86)\Nmap" (
-        set "PATH=%PATH%;C:\Program Files (x86)\Nmap"
-        echo [INFO] Nmap å·²æ³¨å†Œåˆ° PATH
-    )
-    echo [INFO] Nmap å®Œæˆ
+    powershell -Command "$o='%TEMP%\nmap-setup.exe';$u='https://nmap.org/dist/nmap-7.95-setup.exe';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Start-Process $o '/S' -Wait}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] Nmap ÏÂÔØ»ò°²×°Ê§°Ü) else (echo [INFO] Nmap Íê³É)
+    if exist "C:\Program Files (x86)\Nmap" set "PATH=%PATH%;C:\Program Files (x86)\Nmap"
     goto :eof
 )
 
 if "%NUM%"=="2" (
-    echo [INFO] éƒ¨ç½² Masscan...
+    echo [INFO] ²¿Êð Masscan...
     echo [%date% %time%] Masscan >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\masscan" mkdir "%TOOLS_ROOT%\masscan"
-    powershell -Command "$u='https://github.com/L7-GO/Masscan/releases/download/v1.0.0/Masscan-windows-64bit.zip';$o='%TEMP%\masscan.zip';(New-Object Net.WebClient).DownloadFile($u,$o);Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\masscan' -Force" 2>nul
-    echo [INFO] Masscan å®Œæˆ
+    powershell -Command "$o='%TEMP%\masscan.zip';$u='https://github.com/robertdavidgraham/masscan/archive/refs/heads/master.zip';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\masscan' -Force}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] Masscan ÏÂÔØÊ§°Ü) else (echo [HINT] Masscan Ô´ÂëÒÑÏÂÔØ£¬Ðè Visual Studio ±àÒëºóÊ¹ÓÃ)
+    echo [INFO] Masscan Íê³É
     goto :eof
 )
 
 if "%NUM%"=="3" (
-    echo [INFO] éƒ¨ç½² Sqlmap...
+    echo [INFO] ²¿Êð Sqlmap...
     echo [%date% %time%] Sqlmap >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\sqlmap" mkdir "%TOOLS_ROOT%\sqlmap"
-    powershell -Command "git clone https://github.com/sqlmapproject/sqlmap.git '%TOOLS_ROOT%\sqlmap'" 2>nul
-    echo [INFO] Sqlmap å®Œæˆ
+    if exist "%TOOLS_ROOT%\sqlmap\.git" (
+        echo [INFO] Sqlmap ÒÑ´æÔÚ£¬Ìø¹ý
+    ) else (
+        git clone https://github.com/sqlmapproject/sqlmap.git "%TOOLS_ROOT%\sqlmap" >nul 2>&1
+        if errorlevel 1 (echo [ERROR] Sqlmap ¿ËÂ¡Ê§°Ü£¬Çë¼ì²é Git ÍøÂç) else (echo [INFO] Sqlmap Íê³É)
+    )
     goto :eof
 )
 
 if "%NUM%"=="4" (
-    echo [INFO] éƒ¨ç½² Hydra...
+    echo [INFO] ²¿Êð Hydra...
     echo [%date% %time%] Hydra >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\hydra" mkdir "%TOOLS_ROOT%\hydra"
-    powershell -Command "$u='https://github.com/vanhauser-thc/thc-hydra/releases/download/v9.6/hydra-9.6-windows.zip';$o='%TEMP%\hydra.zip';(New-Object Net.WebClient).DownloadFile($u,$o);Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\hydra' -Force" 2>nul
-    echo [INFO] Hydra å®Œæˆ
+    powershell -Command "$o='%TEMP%\hydra.zip';$u='https://github.com/vanhauser-thc/thc-hydra/archive/refs/heads/master.zip';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\hydra' -Force}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] Hydra ÏÂÔØÊ§°Ü) else (echo [HINT] Hydra Ô´ÂëÒÑÏÂÔØ£¬¹Ù·½ÎÞ Windows ¶þ½øÖÆ£¬Ðè±àÒëºóÊ¹ÓÃ)
+    echo [INFO] Hydra Íê³É
     goto :eof
 )
 
 if "%NUM%"=="5" (
-    echo [INFO] éƒ¨ç½² Hashcat...
-    echo [%date% %time%] Hashcat >> "%LOG_FILE%"
-    if not exist "%TOOLS_ROOT%\hashcat" mkdir "%TOOLS_ROOT%\hashcat"
-    powershell -Command "$u='https://hashcat.net/files/hashcat-6.2.6.7z';$o='%TEMP%\hashcat.7z';(New-Object Net.WebClient).DownloadFile($u,$o);& 'C:\Program Files\7-Zip\7z.exe' x $o -o'%TOOLS_ROOT%\hashcat' -y" 2>nul
-    echo [INFO] Hashcat å®Œæˆ
+    call :deploy_hashcat
     goto :eof
 )
 
 if "%NUM%"=="6" (
-    echo [INFO] éƒ¨ç½² FFUF...
+    echo [INFO] ²¿Êð FFUF...
     echo [%date% %time%] FFUF >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\ffuf" mkdir "%TOOLS_ROOT%\ffuf"
-    powershell -Command "$u='https://github.com/ffuf/ffuf/releases/download/v2.1.0/ffuf_2.1.0_windows_amd64.zip';$o='%TEMP%\ffuf.zip';(New-Object Net.WebClient).DownloadFile($u,$o);Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\ffuf' -Force" 2>nul
-    echo [INFO] FFUF å®Œæˆ
+    powershell -Command "$o='%TEMP%\ffuf.zip';$u='https://github.com/ffuf/ffuf/releases/download/v2.1.0/ffuf_2.1.0_windows_amd64.zip';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\ffuf' -Force}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] FFUF ÏÂÔØÊ§°Ü) else (echo [INFO] FFUF Íê³É)
     goto :eof
 )
 
 if "%NUM%"=="7" (
-    echo [INFO] éƒ¨ç½² Dirsearch...
+    echo [INFO] ²¿Êð Dirsearch...
     echo [%date% %time%] Dirsearch >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\dirsearch" mkdir "%TOOLS_ROOT%\dirsearch"
-    powershell -Command "git clone https://github.com/maurosoria/dirsearch.git '%TOOLS_ROOT%\dirsearch'" 2>nul
-    echo [INFO] Dirsearch å®Œæˆ
+    if exist "%TOOLS_ROOT%\dirsearch\.git" (
+        echo [INFO] Dirsearch ÒÑ´æÔÚ£¬Ìø¹ý
+    ) else (
+        git clone https://github.com/maurosoria/dirsearch.git "%TOOLS_ROOT%\dirsearch" >nul 2>&1
+        if errorlevel 1 (echo [ERROR] Dirsearch ¿ËÂ¡Ê§°Ü£¬Çë¼ì²é Git ÍøÂç) else (echo [INFO] Dirsearch Íê³É)
+    )
     goto :eof
 )
 
 if "%NUM%"=="8" (
-    echo [INFO] éƒ¨ç½² Gobuster...
+    echo [INFO] ²¿Êð Gobuster...
     echo [%date% %time%] Gobuster >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\gobuster" mkdir "%TOOLS_ROOT%\gobuster"
-    powershell -Command "$u='https://github.com/OJ/gobuster/releases/download/v3.6.0/gobuster_3.6.0_windows_amd64.zip';$o='%TEMP%\gobuster.zip';(New-Object Net.WebClient).DownloadFile($u,$o);Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\gobuster' -Force" 2>nul
-    echo [INFO] Gobuster å®Œæˆ
+    powershell -Command "$o='%TEMP%\gobuster.zip';$u='https://github.com/OJ/gobuster/releases/download/v3.6.0/gobuster_Windows_x86_64.zip';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\gobuster' -Force}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] Gobuster ÏÂÔØÊ§°Ü) else (echo [INFO] Gobuster Íê³É)
     goto :eof
 )
 
 if "%NUM%"=="9" (
-    echo [INFO] éƒ¨ç½² Whois...
+    echo [INFO] ²¿Êð Whois...
     echo [%date% %time%] Whois >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\whois" mkdir "%TOOLS_ROOT%\whois"
-    powershell -Command "$u='https://downloads.sourceforge.net/project/whois/whois/whois-20190719-win32.zip';$o='%TEMP%\whois.zip';(New-Object Net.WebClient).DownloadFile($u,$o);Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\whois' -Force" 2>nul
-    echo [INFO] Whois å®Œæˆ
+    powershell -Command "$o='%TEMP%\whois.zip';$u='https://download.sysinternals.com/files/WhoIs.zip';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\whois' -Force}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] Whois ÏÂÔØÊ§°Ü) else (echo [INFO] Whois Íê³É)
     goto :eof
 )
 
 if "%NUM%"=="10" (
-    echo [INFO] Xray ä¸ºé—­æºè½¯ä»¶ï¼Œè¯·æ‰‹åŠ¨ä¸‹è½½æ”¾å…¥ %TOOLS_ROOT%\xray
+    echo [INFO] Xray Îª±ÕÔ´Èí¼þ£¬ÇëÊÖ¶¯ÏÂÔØ·ÅÈë %TOOLS_ROOT%\xray
     if not exist "%TOOLS_ROOT%\xray" mkdir "%TOOLS_ROOT%\xray"
-    echo [%date% %time%] Xray - æ‰‹åŠ¨ä¸‹è½½ >> "%LOG_FILE%"
-    echo [INFO] Xray å®Œæˆ
+    echo [%date% %time%] Xray - ÊÖ¶¯ÏÂÔØ >> "%LOG_FILE%"
+    echo [INFO] Xray Íê³É
     goto :eof
 )
 
 if "%NUM%"=="11" (
-    echo [INFO] éƒ¨ç½² Wireshark...
+    echo [INFO] ²¿Êð Wireshark...
     echo [%date% %time%] Wireshark >> "%LOG_FILE%"
-    if not exist "%TOOLS_ROOT%\wireshark" mkdir "%TOOLS_ROOT%\wireshark"
-    powershell -Command "$u='https://2.na.dl.wireshark.org/win64/WiresharkPortable64-4.4.8.paf.exe';$o='%TEMP%\wireshark.exe';(New-Object Net.WebClient).DownloadFile($u,$o);Start-Process $o '/S /D=%TOOLS_ROOT%\wireshark' -Wait" 2>nul
-    echo [INFO] Wireshark å®Œæˆ
+    powershell -Command "$o='%TEMP%\wireshark-setup.exe';$u='https://2.na.dl.wireshark.org/win64/Wireshark-4.6.9-x64.exe';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Start-Process $o '/S' -Wait}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] Wireshark ÏÂÔØ»ò°²×°Ê§°Ü) else (echo [INFO] Wireshark Íê³É)
+    if exist "C:\Program Files\Wireshark" set "PATH=%PATH%;C:\Program Files\Wireshark"
     goto :eof
 )
 
 if "%NUM%"=="12" (
-    echo [INFO] éƒ¨ç½² Nuclei...
+    echo [INFO] ²¿Êð Nuclei...
     echo [%date% %time%] Nuclei >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\nuclei" mkdir "%TOOLS_ROOT%\nuclei"
-    powershell -Command "$u='https://github.com/projectdiscovery/nuclei/releases/download/v3.3.7/nuclei_3.3.7_windows_amd64.zip';$o='%TEMP%\nuclei.zip';(New-Object Net.WebClient).DownloadFile($u,$o);Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\nuclei' -Force" 2>nul
-    echo [INFO] Nuclei å®Œæˆ
+    powershell -Command "$o='%TEMP%\nuclei.zip';$u='https://github.com/projectdiscovery/nuclei/releases/download/v3.3.8/nuclei_3.3.8_windows_amd64.zip';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\nuclei' -Force}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] Nuclei ÏÂÔØÊ§°Ü) else (echo [INFO] Nuclei Íê³É)
     goto :eof
 )
 
 if "%NUM%"=="13" (
-    echo [INFO] éƒ¨ç½² Subfinder...
+    echo [INFO] ²¿Êð Subfinder...
     echo [%date% %time%] Subfinder >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\subfinder" mkdir "%TOOLS_ROOT%\subfinder"
-    powershell -Command "$u='https://github.com/projectdiscovery/subfinder/releases/download/v2.6.7/subfinder_2.6.7_windows_amd64.zip';$o='%TEMP%\subfinder.zip';(New-Object Net.WebClient).DownloadFile($u,$o);Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\subfinder' -Force" 2>nul
-    echo [INFO] Subfinder å®Œæˆ
+    powershell -Command "$o='%TEMP%\subfinder.zip';$u='https://github.com/projectdiscovery/subfinder/releases/download/v2.6.7/subfinder_2.6.7_windows_amd64.zip';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\subfinder' -Force}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] Subfinder ÏÂÔØÊ§°Ü) else (echo [INFO] Subfinder Íê³É)
     goto :eof
 )
 
 if "%NUM%"=="14" (
-    echo [INFO] éƒ¨ç½² Httpx...
+    echo [INFO] ²¿Êð Httpx...
     echo [%date% %time%] Httpx >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\httpx" mkdir "%TOOLS_ROOT%\httpx"
-    powershell -Command "$u='https://github.com/projectdiscovery/httpx/releases/download/v1.6.10/httpx_1.6.10_windows_amd64.zip';$o='%TEMP%\httpx.zip';(New-Object Net.WebClient).DownloadFile($u,$o);Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\httpx' -Force" 2>nul
-    echo [INFO] Httpx å®Œæˆ
+    powershell -Command "$o='%TEMP%\httpx.zip';$u='https://github.com/projectdiscovery/httpx/releases/download/v1.6.10/httpx_1.6.10_windows_amd64.zip';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\httpx' -Force}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] Httpx ÏÂÔØÊ§°Ü) else (echo [INFO] Httpx Íê³É)
     goto :eof
 )
 
 if "%NUM%"=="15" (
-    echo [INFO] éƒ¨ç½² RustScan...
+    echo [INFO] ²¿Êð RustScan...
     echo [%date% %time%] RustScan >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\rustscan" mkdir "%TOOLS_ROOT%\rustscan"
-    powershell -Command "$u='https://github.com/RustScan/RustScan/releases/download/2.3.0/rustscan-2.3.0-windows.zip';$o='%TEMP%\rustscan.zip';(New-Object Net.WebClient).DownloadFile($u,$o);Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\rustscan' -Force" 2>nul
-    echo [INFO] RustScan å®Œæˆ
+    powershell -Command "$o='%TEMP%\rustscan.zip';$u='https://github.com/bee-san/RustScan/releases/download/2.4.1/x86_64-windows-rustscan.exe.zip';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\rustscan' -Force}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] RustScan ÏÂÔØÊ§°Ü) else (echo [INFO] RustScan Íê³É)
     goto :eof
 )
 
 if "%NUM%"=="16" (
-    echo [INFO] éƒ¨ç½² John the Ripper...
+    echo [INFO] ²¿Êð John...
     echo [%date% %time%] John >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\john" mkdir "%TOOLS_ROOT%\john"
-    echo [INFO] éœ€è¦ä»Ž https://github.com/openwall/john/archive/refs/heads/bleeding-jumbo.zip ä¸‹è½½æºç 
-    echo [INFO] æˆ–ä¸‹è½½é¢„ç¼–è¯‘åŒ…: https://github.com/openwall/john/releases
-    powershell -Command "$u='https://github.com/openwall/john/archive/refs/heads/bleeding-jumbo.zip';$o='%TEMP%\john.zip';(New-Object Net.WebClient).DownloadFile($u,$o);Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\john' -Force" 2>nul
-    echo [INFO] John å®Œæˆ
+    powershell -Command "$o='%TEMP%\john.zip';$u='https://github.com/openwall/john/archive/refs/heads/bleeding-jumbo.zip';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\john' -Force}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] John Ô´ÂëÏÂÔØÊ§°Ü) else (echo [HINT] John Ô´ÂëÒÑÏÂÔØ£¬Ðè±àÒëºóÊ¹ÓÃ)
+    echo [INFO] John Íê³É
     goto :eof
 )
 
 if "%NUM%"=="17" (
-    echo [INFO] éƒ¨ç½² Mimikatz...
+    echo [INFO] ²¿Êð Mimikatz...
     echo [%date% %time%] Mimikatz >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\mimikatz" mkdir "%TOOLS_ROOT%\mimikatz"
-    powershell -Command "$u='https://github.com/gentilkiwi/mimikatz/releases/download/2.2.0-20240918/mimikatz_trunk.7z';$o='%TEMP%\mimikatz.7z';(New-Object Net.WebClient).DownloadFile($u,$o);& 'C:\Program Files\7-Zip\7z.exe' x $o -o'%TOOLS_ROOT%\mimikatz' -y" 2>nul
-    echo [INFO] Mimikatz å®Œæˆ
+    powershell -Command "$o='%TEMP%\mimikatz.zip';$u='https://github.com/gentilkiwi/mimikatz/releases/download/2.2.0-20220919/mimikatz_trunk.zip';(New-Object Net.WebClient).DownloadFile($u,$o);if(Test-Path $o){Expand-Archive -Path $o -DestinationPath '%TOOLS_ROOT%\mimikatz' -Force}else{exit 1}" >nul
+    if errorlevel 1 (echo [ERROR] Mimikatz ÏÂÔØÊ§°Ü) else (echo [INFO] Mimikatz Íê³É)
     goto :eof
 )
 
 if "%NUM%"=="18" (
-    echo [INFO] éƒ¨ç½² Responder...
+    echo [INFO] ²¿Êð Responder...
     echo [%date% %time%] Responder >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\responder" mkdir "%TOOLS_ROOT%\responder"
-    powershell -Command "git clone https://github.com/lgandx/Responder.git '%TOOLS_ROOT%\responder'" 2>nul
-    echo [INFO] Responder å®Œæˆ
+    if exist "%TOOLS_ROOT%\responder\.git" (
+        echo [INFO] Responder ÒÑ´æÔÚ£¬Ìø¹ý
+    ) else (
+        git clone https://github.com/lgandx/Responder.git "%TOOLS_ROOT%\responder" >nul 2>&1
+        if errorlevel 1 (echo [ERROR] Responder ¿ËÂ¡Ê§°Ü£¬Çë¼ì²é Git ÍøÂç) else (echo [INFO] Responder Íê³É)
+    )
     goto :eof
 )
 
 if "%NUM%"=="19" (
-    echo [INFO] éƒ¨ç½² Evil-WinRM...
+    echo [INFO] ²¿Êð Evil-WinRM...
     echo [%date% %time%] Evil-WinRM >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\evil-winrm" mkdir "%TOOLS_ROOT%\evil-winrm"
-    powershell -Command "git clone https://github.com/Hackplayers/evil-winrm.git '%TOOLS_ROOT%\evil-winrm'" 2>nul
-    echo [INFO] Evil-WinRM å®Œæˆ
+    if exist "%TOOLS_ROOT%\evil-winrm\.git" (
+        echo [INFO] Evil-WinRM ÒÑ´æÔÚ£¬Ìø¹ý
+    ) else (
+        git clone https://github.com/Hackplayers/evil-winrm.git "%TOOLS_ROOT%\evil-winrm" >nul 2>&1
+        if errorlevel 1 (echo [ERROR] Evil-WinRM ¿ËÂ¡Ê§°Ü£¬Çë¼ì²é Git ÍøÂç) else (echo [INFO] Evil-WinRM Íê³É)
+    )
     goto :eof
 )
 
 if "%NUM%"=="20" (
-    echo [INFO] éƒ¨ç½² Impacket...
+    echo [INFO] ²¿Êð Impacket...
     echo [%date% %time%] Impacket >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\impacket" mkdir "%TOOLS_ROOT%\impacket"
-    powershell -Command "git clone https://github.com/fortra/impacket.git '%TOOLS_ROOT%\impacket'" 2>nul
-    echo [INFO] Impacket å®Œæˆ
+    if exist "%TOOLS_ROOT%\impacket\.git" (
+        echo [INFO] Impacket ÒÑ´æÔÚ£¬Ìø¹ý
+    ) else (
+        git clone https://github.com/fortra/impacket.git "%TOOLS_ROOT%\impacket" >nul 2>&1
+        if errorlevel 1 (echo [ERROR] Impacket ¿ËÂ¡Ê§°Ü£¬Çë¼ì²é Git ÍøÂç) else (echo [INFO] Impacket Íê³É)
+    )
     goto :eof
 )
 
 if "%NUM%"=="21" (
-    echo [INFO] éƒ¨ç½² CrackMapExec...
+    echo [INFO] ²¿Êð CrackMapExec...
     echo [%date% %time%] CrackMapExec >> "%LOG_FILE%"
     if not exist "%TOOLS_ROOT%\crackmapexec" mkdir "%TOOLS_ROOT%\crackmapexec"
-    powershell -Command "git clone https://github.com/Penntest-docker/CrackMapExec.git '%TOOLS_ROOT%\crackmapexec'" 2>nul
-    echo [INFO] CrackMapExec å®Œæˆ
+    if exist "%TOOLS_ROOT%\crackmapexec\.git" (
+        echo [INFO] CrackMapExec ÒÑ´æÔÚ£¬Ìø¹ý
+    ) else (
+        git clone https://github.com/Porchetta-Industries/CrackMapExec.git "%TOOLS_ROOT%\crackmapexec" >nul 2>&1
+        if errorlevel 1 (echo [ERROR] CrackMapExec ¿ËÂ¡Ê§°Ü£¬Çë¼ì²é Git ÍøÂç) else (echo [HINT] CrackMapExec ÐèÔÚÔ´ÂëÄ¿Â¼Ö´ÐÐ pip install ºóÊ¹ÓÃ)
+    )
+    echo [INFO] CrackMapExec Íê³É
     goto :eof
 )
 
-echo [ERROR] æ— æ•ˆç¼–å·: %NUM%
+echo [ERROR] ÎÞÐ§±àºÅ: %NUM%
 goto :eof
 
 REM ============================================================
-REM å®Œæˆ
+REM ÅäÖÃÏµÍ³ PATH
 REM ============================================================
 :done
+echo [INFO] ÕýÔÚÅäÖÃÏµÍ³ PATH...
+powershell -NoProfile -Command "$all=@();Get-ChildItem -Path 'C:\SecTools' -Directory -ErrorAction SilentlyContinue | ForEach-Object {$all+=$_.FullName;foreach($s in @('bin','x64','run','hashcat','Bundled')){$sd=Join-Path $_.FullName $s;if(Test-Path $sd){$all+=$sd}}};$all=$all|Select-Object -Unique;$p=[Environment]::GetEnvironmentVariable('PATH','Machine');if($null -eq $p){$p=''};try{$parts=@($p.Split(';')|Where-Object{$_});$newDirs=@($all|Where-Object{$parts -notcontains $_});if($newDirs.Count -gt 0){$new=$parts+$newDirs;[Environment]::SetEnvironmentVariable('PATH',($new -join ';'),'Machine');Write-Host ('  [OK] ÐÂÔö '+$newDirs.Count+' ¸öÄ¿Â¼µ½ÏµÍ³ PATH')}else{Write-Host '  [i] PATH ÒÑ°üº¬È«²¿¹¤¾ßÄ¿Â¼£¬ÎÞÐè±ä¸ü'}}catch{exit 1}"
+if errorlevel 1 (echo [WARN] ÏµÍ³ PATH ÅäÖÃÊ§°Ü) else (echo [%date% %time%] PATH ÅäÖÃÍê³É >> "%LOG_FILE%")
+
 echo.
 echo ============================================================
-echo  éƒ¨ç½²å®Œæˆ!
+echo  ²¿ÊðÍê³É!
 echo ============================================================
 echo.
-echo [INFO] å·¥å…·ç›®å½•: %TOOLS_ROOT%
-echo [INFO] æ—¥å¿—æ–‡ä»¶: %LOG_FILE%
+echo [INFO] ¹¤¾ßÄ¿Â¼: %TOOLS_ROOT%
+echo [INFO] ÈÕÖ¾ÎÄ¼þ: %LOG_FILE%
+echo [INFO] ÐÂ¿ªµÄ CMD/PowerShell ´°¿Ú¼´¿ÉÈ«¾Öµ÷ÓÃ¹¤¾ß
 echo.
-echo [%date% %time%] éƒ¨ç½²å®Œæˆ >> "%LOG_FILE%"
+echo [%date% %time%] ²¿ÊðÍê³É >> "%LOG_FILE%"
 pause
 exit /b 0

@@ -2,16 +2,28 @@
 title Kali Tools Deployer
 cd /d "%~dp0"
 
+REM --- ¹ÜÀíÔ±È¨ÏŞ¼ì²é ---
+fltmc >nul 2>&1
+if %errorlevel% neq 0 (
+    echo.
+    echo  [ERROR] ÇëÒÔ¹ÜÀíÔ±Éí·İÔËĞĞ±¾³ÌĞò¡£
+    echo.
+    echo  ÓÒ¼üµã»÷±¾ÎÄ¼ş£¬Ñ¡Ôñ "ÒÔ¹ÜÀíÔ±Éí·İÔËĞĞ"¡£
+    echo.
+    pause
+    exit /b 1
+)
+
 echo.
 echo ========================================
-echo  Kali Tools Deployer - å¯åŠ¨ä¸­...
+echo  Kali Tools Deployer - Æô¶¯ÖĞ...
 echo ========================================
 echo.
 
 if exist "dist\KaliToolsGUI.exe" (
-    echo [INFO] å¯åŠ¨å›¾å½¢åŒ–ç•Œé¢...
+    echo [INFO] Æô¶¯Í¼ĞÎ»¯½çÃæ...
     start "" "dist\KaliToolsGUI.exe"
 ) else (
-    echo [INFO] å›¾å½¢åŒ–ç•Œé¢ä¸å­˜åœ¨ï¼Œå¯åŠ¨å‘½ä»¤è¡Œéƒ¨ç½²...
+    echo [INFO] Í¼ĞÎ»¯½çÃæ²»´æÔÚ£¬Æô¶¯ÃüÁîĞĞ²¿Êğ...
     powershell -ExecutionPolicy Bypass -NoExit -File "Kali-Tools-Deployer.ps1"
 )
