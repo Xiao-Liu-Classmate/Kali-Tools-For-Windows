@@ -112,6 +112,7 @@ GUI 内置 SHA256 校验机制（工具配置含 `sha256` 字段时自动校验�
 ├── deploy_config.json         下载源权威配置（URL/目录/SHA256）
 ├── dist/KaliToolsGUI.exe      预编译图形界面
 ├── scripts/check_urls.py      下载源健康检查工具
+├── check_all.bat              一键本地检查（测试+编译+下载源）
 ├── test_kalitools.py          离线回归测试（配置/BAT/PS1）
 ├── test_check_urls.py         URL 检查工具自身的测试
 ├── requirements.txt           Python 依赖（py7zr）
@@ -138,7 +139,14 @@ python scripts/check_urls.py --config   # 仅 deploy_config.json
 
 # 重新打包 GUI
 build_exe.bat
+
+# 一键本地检查：单元测试 + 语法编译检查 + 下载源健康检查（失败返回非零退出码）
+check_all.bat            # 全部检查
+check_all.bat offline    # 跳过下载源检查（离线/内网环境）
 ```
+
+> `check_all.bat` 不含 GUI 打包（打包见上方 `build_exe.bat`）；
+> 无人值守调用时可加 `offline` 参数避免联网检查拖慢流程。
 
 推送到 `main` 时 CI 自动运行测试；每周一定时检查下载源健康状况。
 

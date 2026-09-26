@@ -278,7 +278,7 @@ class TestBatStructure(unittest.TestCase):
 
     def test_gbk_decodable_and_crlf(self):
         self.assertIn("\r\n", self.text)
-        self.assertNotIn("\r\n\n", self.text)  # 无混杂裸 LF
+        self.assertNotIn("\n", self.text.replace("\r\n", ""))  # 无混杂裸 LF
 
     def test_paren_balance(self):
         self.assertEqual(self.text.count("("), self.text.count(")"))
@@ -411,6 +411,51 @@ class TestReleaseBuildConsistency(unittest.TestCase):
             gate, "build_exe.bat must gate install on exact pinned version")
         self.assertEqual(gate.group(1), pins[0],
                          "build_exe.bat version gate drifted from pin")
+
+
+class TestCheckAllBat(unittest.TestCase):
+    """check_all.bat：编码、cmd 可解析性与退出码语义。"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = read_text("check_all.bat", GBK)
+        cls.lines = cls.text.split("\r\n")
+
+    def test_gbk_decodable_and_crlf(self):
+        self.assertIn("\r\n", self.text)
+        self.assertNotIn("\n", self.text.replace("\r\n", ""))
+
+    def test_no_literal_question_runs(self):
+        self.assertNotRegex(self.text, r"\?{4,}")
+
+    def test_paren_balance(self):
+        self.assertEqual(self.text.count("("), self.text.count(")"))
+
+    def test_line_length_under_cmd_limit(self):
+        longest = max(len(x.encode(GBK, errors="replace")) for x in self.lines)
+        self.assertLess(longest, 8191)
+
+    def test_label_summary_defined_and_referenced(self):
+        labels = set(re.findall(r"(?m)^:(\w+)", self.text))
+        refs = set(re.findall(r"(?m)goto :?(\w+)", self.text))
+        missing = {r for r in refs if r not in labels}
+        self.assertFalse(missing, "missing labels: %s" % missing)
+
+    def test_offline_mode_skips_network_step(self):
+        self.assertIn('if /i "%~1"=="offline" goto :summary', self.text)
+
+    def test_exit_code_reflects_failure(self):
+        # 失败标记必须在块外读取，退出码不能恒为 0
+        self.assertIn('set "RC=1"', self.text)
+        self.assertIn("exit /b %RC%", self.text)
+
+    def test_setlocal_present(self):
+        # 防止 FAILED 等变量泄漏到调用者环境
+        self.assertRegex(self.text, r"(?m)^setlocal\b")
+
+    def test_pause_only_without_args(self):
+        # 双击运行时需停留查看结果，脚本化调用时不阻塞
+        self.assertIn('if "%~1"=="" pause', self.text)
 
 
 if __name__ == "__main__":
