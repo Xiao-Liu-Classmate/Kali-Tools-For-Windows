@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # GitHub Actions 版本自动跟踪（checkout/setup-python/upload-artifact 等）
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies"]
+
+  # Python 依赖（py7zr 等）
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies"]
