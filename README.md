@@ -148,6 +148,11 @@ check_all.bat offline    # 跳过下载源检查（离线/内网环境）
 > `check_all.bat` 不含 GUI 打包（打包见上方 `build_exe.bat`）；
 > 无人值守调用时可加 `offline` 参数避免联网检查拖慢流程。
 
+> **关于 exe 体积差异**：`dist/` 中的入库 exe 由本地环境打包，Release 资产由
+> CI 打包，两者字节数可能不同（如 19MB vs 14MB）。这来自 UPX 是否可用、
+> Python 补丁版本等环境差异，**不影响功能**；Release 资产每次发布都从
+> 同一份源码重新构建，且 notes 中附 SHA256 可供校验。
+
 推送到 `main` 时 CI 自动运行测试；每周一定时检查下载源健康状况。
 
 **发布新版本**：推送 `V*` 形式 tag（如 `V26.10.1`）即自动跑测试、构建 exe 并创建/更新 Release 资产（见 [release.yml](.github/workflows/release.yml)），无需手动打包上传。
