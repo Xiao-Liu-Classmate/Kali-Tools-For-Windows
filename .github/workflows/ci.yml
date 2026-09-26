@@ -28,11 +28,11 @@ jobs:
 
       - name: Syntax check
         run: |
-          python -m py_compile KaliToolsGUI.py scripts/check_urls.py
-          python -m py_compile test_kalitools.py test_check_urls.py
+          python -m py_compile KaliToolsGUI.py scripts/check_urls.py scripts/check_versions.py
+          python -m py_compile test_kalitools.py test_check_urls.py test_check_versions.py
 
       - name: Run offline regression tests
-        run: python -m unittest -v test_kalitools test_check_urls
+        run: python -m unittest -v test_kalitools test_check_urls test_check_versions
 
       - name: PowerShell syntax check
         shell: pwsh

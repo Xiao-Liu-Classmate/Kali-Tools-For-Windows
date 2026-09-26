@@ -33,7 +33,7 @@ set "STEPS=2"
 if /i not "%~1"=="offline" set "STEPS=3"
 
 echo [1/!STEPS!] ¿ÎœﬂªÿπÈ≤‚ ‘...
-%PY% -m unittest test_kalitools test_check_urls
+%PY% -m unittest test_kalitools test_check_urls test_check_versions
 if errorlevel 1 (
     echo [FAIL] ªÿπÈ≤‚ ‘Œ¥Õ®π˝
     set "FAILED=1"
@@ -41,7 +41,7 @@ if errorlevel 1 (
 
 echo.
 echo [2/!STEPS!] Python ”Ô∑®±‡“ÎºÏ≤È...
-for %%f in (KaliToolsGUI.py scripts\check_urls.py test_kalitools.py test_check_urls.py) do (
+for %%f in (KaliToolsGUI.py scripts\check_urls.py scripts\check_versions.py test_kalitools.py test_check_urls.py test_check_versions.py) do (
     %PY% -m py_compile "%%f"
     if errorlevel 1 (
         echo [FAIL] ±‡“Î ß∞‹: %%f

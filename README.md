@@ -115,9 +115,11 @@ GUI 内置 SHA256 校验机制（工具配置含 `sha256` 字段时自动校验�
 ├── deploy_config.json         下载源权威配置（URL/目录/SHA256）
 ├── dist/KaliToolsGUI.exe      预编译图形界面
 ├── scripts/check_urls.py      下载源健康检查工具
+├── scripts/check_versions.py  工具版本落后检查（对比上游最新 release）
 ├── check_all.bat              一键本地检查（测试+编译+下载源）
 ├── test_kalitools.py          离线回归测试（配置/BAT/PS1）
 ├── test_check_urls.py         URL 检查工具自身的测试
+├── test_check_versions.py     版本检查工具自身的测试
 ├── requirements.txt           Python 依赖（py7zr）
 ├── SECURITY.md                安全漏洞报告策略
 ├── LICENSE                    MIT 许可证
@@ -134,11 +136,16 @@ GUI 内置 SHA256 校验机制（工具配置含 `sha256` 字段时自动校验�
 pip install -r requirements.txt
 
 # 离线回归测试（无需网络/管理员权限，覆盖配置一致性、SHA256、BAT 结构、PS1 语法）
-python -m unittest test_kalitools test_check_urls -v
+python -m unittest test_kalitools test_check_urls test_check_versions -v
 
 # 检查全部下载源是否可用（HEAD 请求，失效退出码 1）
 python scripts/check_urls.py            # 全部来源：JSON + BAT + PS1
 python scripts/check_urls.py --config   # 仅 deploy_config.json
+
+# 检查固定版本的工具是否落后于上游最新 release
+python scripts/check_versions.py                    # 报告差异
+python scripts/check_versions.py --fail-on-update   # 有新版时退出码 1
+python scripts/check_versions.py --json versions.json
 
 # 重新打包 GUI
 build_exe.bat

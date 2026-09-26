@@ -29,7 +29,7 @@ jobs:
           pip install pyinstaller==6.22.2
 
       - name: Run tests before release
-        run: python -m unittest -v test_kalitools test_check_urls
+        run: python -m unittest -v test_kalitools test_check_urls test_check_versions
 
       - name: Build GUI exe
         # 与 build_exe.bat 的打包参数保持一致
