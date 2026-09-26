@@ -113,7 +113,12 @@ GUI 内置 SHA256 校验机制（工具配置含 `sha256` 字段时自动校验�
 ├── test_kalitools.py          离线回归测试（配置/BAT/PS1）
 ├── test_check_urls.py         URL 检查工具自身的测试
 ├── requirements.txt           Python 依赖（py7zr）
-└── .github/workflows/         CI（测试）与每周链接检查
+├── SECURITY.md                安全漏洞报告策略
+├── LICENSE                    MIT 许可证
+└── .github/
+    ├── workflows/             CI（测试）、每周链接检查、tag 自动发布
+    ├── ISSUE_TEMPLATE/        链接失效报告模板
+    └── dependabot.yml         依赖自动更新
 ```
 
 ## 开发与测试
@@ -134,6 +139,8 @@ build_exe.bat
 ```
 
 推送到 `main` 时 CI 自动运行测试；每周一定时检查下载源健康状况。
+
+**发布新版本**：推送 `V*` 形式 tag（如 `V26.10.1`）即自动跑测试、构建 exe 并创建/更新 Release 资产（见 [release.yml](.github/workflows/release.yml)），无需手动打包上传。
 
 ### 配置约定
 
