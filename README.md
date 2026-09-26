@@ -42,6 +42,9 @@
 
 ## 使用方法
 
+> **不想克隆仓库？** 直接前往 [Releases](../../releases/latest) 下载
+> `KaliToolsGUI.exe`（展开 Assets 区域），下载后直接以管理员身份运行即可。
+
 ### 方式一：图形化界面（推荐）
 
 ```
