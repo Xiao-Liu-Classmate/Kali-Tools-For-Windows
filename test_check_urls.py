@@ -74,6 +74,25 @@ class TestCollectUrls(unittest.TestCase):
         self.assertEqual(urls, ["https://a.example/x.zip",
                                 "https://b.example/y.zip"])
 
+    def test_regex_stops_at_shell_code(self):
+        # 回归：BAT/PS1 中 URL 后紧跟的引号与代码不得吞入（否则 404 假阳性）
+        text = (
+            "$u='https://a.example/x.zip';(New-Object Net.WebClient)"
+            ".DownloadFile($u,$d)\r\n"
+            "set \"URL=https://b.example/y.exe\"\r\n"
+            "curl -o f https://c.example/z.7z & echo done"
+        )
+        urls = cu.URL_RE.findall(text)
+        self.assertEqual(urls, ["https://a.example/x.zip",
+                                "https://b.example/y.exe",
+                                "https://c.example/z.7z"])
+
+    def test_regex_keeps_hyphen_in_path(self):
+        # 回归：'-' 是字符类范围语法，漏掉会导致 URL 在连字符处截断
+        text = "https://nmap.org/dist/nmap-7.95-setup.exe end"
+        self.assertEqual(cu.URL_RE.findall(text),
+                         ["https://nmap.org/dist/nmap-7.95-setup.exe"])
+
     def test_regex_keeps_query_fragment(self):
         text = "https://c.example/dl?a=1&b=2#frag end"
         self.assertEqual(cu.URL_RE.findall(text),

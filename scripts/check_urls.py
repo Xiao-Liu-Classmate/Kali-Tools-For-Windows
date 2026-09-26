@@ -24,8 +24,10 @@ import urllib.request
 import urllib.error
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# RFC3986 允许字符白名单，避免把 URL 后紧跟的中文/全角标点吞进 URL
-URL_RE = re.compile(r"https://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+")
+# RFC3986 允许字符白名单；刻意排除 ' ( ) , ; ! { } < > | ` 等
+# shell/cmd/PowerShell 语法字符 —— BAT/PS1 中 URL 后紧跟的定界符与代码
+# 不得被吞进 URL（否则产生 404 假阳性）。'-' 必须放在字符类末尾。
+URL_RE = re.compile(r"https://[A-Za-z0-9._~:/?#\[\]@$&+=%-]+")
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 
@@ -35,7 +37,7 @@ def collect_urls(include_scripts=True):
     found = {}
 
     def add(url, src):
-        url = url.rstrip(",;")
+        url = url.rstrip("'\";,)")  # 兜底去掉定界残留
         srcs = found.setdefault(url, [])
         if src not in srcs:  # 同文件内重复 URL 只记一次来源
             srcs.append(src)
