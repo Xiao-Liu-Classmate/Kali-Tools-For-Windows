@@ -5,13 +5,11 @@ __pycache__/
 *.pyd
 .Python
 *.egg-info/
-dist/
-build/
-*.exe.spec
 
-# PyInstaller
+# PyInstaller 中间产物
+# 注意：dist/ 不忽略 —— dist/KaliToolsGUI.exe 是有意入库的发布产物
+build/
 *.spec
-!KaliToolsGUI.spec
 
 # Temp
 *.tmp

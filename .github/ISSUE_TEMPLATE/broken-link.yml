@@ -1,0 +1,38 @@
+name: 下载链接失效报告
+description: 报告某个工具的下载 URL 已失效（404 / 文件改名 / 无法访问）
+title: "[链接失效] "
+labels: ["bug", "links"]
+body:
+  - type: input
+    id: tool
+    attributes:
+      label: 工具编号与名称
+      placeholder: "例：12 Nuclei"
+    validations:
+      required: true
+
+  - type: input
+    id: url
+    attributes:
+      label: 失效的 URL
+      description: 可在 deploy_config.json、SecTools_Deploy.bat 或 Kali-Tools-Deployer.ps1 中找到
+    validations:
+      required: true
+
+  - type: input
+    id: status
+    attributes:
+      label: HTTP 状态码 / 报错信息
+      placeholder: "例：HTTP 404，或连接超时"
+
+  - type: textarea
+    id: alternative
+    attributes:
+      label: 可用的替代链接（如有）
+      description: 新的 release 地址、镜像站或其他可用下载源
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 补充说明
+      description: 出现时间、地区/网络环境、其他有助于定位的信息

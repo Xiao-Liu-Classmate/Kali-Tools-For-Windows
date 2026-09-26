@@ -81,6 +81,10 @@ build_exe.bat
 
 GUI 内置 SHA256 校验机制（工具配置含 `sha256` 字段时自动校验）。
 
+以上 URL 由 [URL health 工作流](.github/workflows/url-health.yml) 每周自动检查
+（覆盖 JSON / BAT / PS1 三处来源），失效时可
+[提交链接失效 Issue](../../issues/new?template=broken-link.yml)反馈。
+
 ## 部署目录
 
 - 工具安装目录：`C:\SecTools\`
