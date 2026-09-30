@@ -191,22 +191,454 @@ def verify_sha256(path, expected):
     return actual == expected.upper()
 
 
+# =============================================================================
+# 液态玻璃风格 UI —— 纯表现层
+# 部署 / 下载 / 校验 / 解压等核心逻辑不受本节任何改动影响
+# =============================================================================
+
+HEADER_PAD = 20       # 顶栏左右留白
+HEADER_H = 104        # 顶栏高度
+LOG_H = 132           # 日志区固定高度（其余空间留给工具卡片）
+
+class GlassTheme(object):
+    """深色玻璃主题配色（液态玻璃观感：高光边缘 + 半透明色层 + 柔和渐变）。"""
+    bg_top = "#1A2036"        # 背景渐变（上）
+    bg_bottom = "#080B14"     # 背景渐变（下）
+    header_a = "#2A3358"      # 标题条渐变
+    header_b = "#4B3A7A"
+    card = "#171D2E"          # 卡片底色
+    card_hover = "#1F2740"    # 卡片悬停
+    card_on = "#1C2742"       # 卡片选中
+    stroke = "#2C3550"        # 卡片描边
+    stroke_hi = "#5C6B99"     # 悬停/选中描边（高光）
+    text = "#EAEDF7"          # 主文字
+    text_dim = "#8E99B8"      # 次要文字
+    accent = "#5B8CFF"        # 主题强调色
+    accent2 = "#A96BFF"       # 强调色渐变端
+    success = "#3DDC97"
+    danger = "#FF6B6B"
+    warn = "#FFC24B"
+    log_bg = "#0C101C"
+    track = "#232B44"         # 进度条轨道
+
+    # 圆角/间距/尺寸
+    radius = 12
+    card_radius = 14
+    pad = 16
+
+
+def _mix(c1, c2, t):
+    """两个 #RRGGBB 颜色按 t(0..1) 线性混合，返回 #RRGGBB。"""
+    t = max(0.0, min(1.0, t))
+    a = [int(c1[i:i + 2], 16) for i in (1, 3, 5)]
+    b = [int(c2[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#%02x%02x%02x" % tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+
+
+def _rrect(cv, x1, y1, x2, y2, r, **kw):
+    """圆角矩形（Tk 无原生圆角，用平滑多边形逼近）。"""
+    r = max(1, min(r, int((x2 - x1) / 2), int((y2 - y1) / 2)))
+    pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r,
+           x2, y2 - r, x2, y2, x2 - r, y2, x1 + r, y2,
+           x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
+    return cv.create_polygon(pts, smooth=True, splinesteps=18, **kw)
+
+
+def _vgrad(cv, x1, y1, x2, y2, c_from, c_to, tags=(), steps=72):
+    """竖直线性渐变：用若干无边框矩形条带模拟（深色下视觉平滑）。"""
+    h = float(y2 - y1)
+    if h <= 0:
+        return []
+    steps = max(2, min(int(steps), int(h)))
+    items = []
+    for i in range(steps):
+        t = i / float(steps - 1)
+        ya = y1 + h * i / steps
+        yb = y1 + h * (i + 1) / steps + 1
+        items.append(cv.create_rectangle(x1, ya, x2, yb,
+                                        fill=_mix(c_from, c_to, t),
+                                        outline="", tags=tags))
+    return items
+
+
+def _hgrad(cv, x1, y1, x2, y2, c_from, c_to, tags=(), steps=48):
+    """水平线性渐变。"""
+    w = float(x2 - x1)
+    if w <= 0:
+        return []
+    steps = max(2, min(int(steps), int(w)))
+    items = []
+    for i in range(steps):
+        t = i / float(steps - 1)
+        xa = x1 + w * i / steps
+        xb = x1 + w * (i + 1) / steps + 1
+        items.append(cv.create_rectangle(xa, y1, xb, y2,
+                                        fill=_mix(c_from, c_to, t),
+                                        outline="", tags=tags))
+    return items
+
+
+class GlassButton(tk.Canvas):
+    """圆角玻璃按钮：渐变填充 + 顶部高光 + 悬停/按下反馈。"""
+
+    def __init__(self, parent, text, command, theme=None, accent=False,
+                 width=112, height=36, font=None):
+        t = theme or GlassTheme
+        tk.Canvas.__init__(self, parent, width=width, height=height,
+                           highlightthickness=0, bd=0, bg=t.bg_bottom,
+                           cursor="hand2")
+        self._t = t
+        self._text = text
+        self._cmd = command
+        self._accent = accent
+        # 注意：不可用 self._w / self._h —— 它们是 tkinter 内部 widget 路径属性
+        self._bw = width
+        self._bh = height
+        self._font = font or ("Microsoft YaHei UI", 10)
+        self._state = "normal"
+        self._enabled = True
+        self.bind("<Configure>", lambda e: self._redraw())
+        self.bind("<Enter>", self._on_enter)
+        self.bind("<Leave>", self._on_leave)
+        self.bind("<ButtonPress-1>", self._on_press)
+        self.bind("<ButtonRelease-1>", self._on_release)
+        self._redraw()
+
+    # -- 状态 ---------------------------------------------------------------
+    def _on_enter(self, _e):
+        if self._enabled and self._state == "normal":
+            self._state = "hover"
+            self._redraw()
+
+    def _on_leave(self, _e):
+        self._state = "normal"
+        self._redraw()
+
+    def _on_press(self, _e):
+        if self._enabled:
+            self._state = "press"
+            self._redraw()
+
+    def _on_release(self, _e):
+        was = self._state
+        self._state = "hover" if self._enabled else "normal"
+        self._redraw()
+        if was == "press" and self._enabled and self._cmd:
+            self._cmd()
+
+    def set_enabled(self, flag):
+        self._enabled = bool(flag)
+        self.configure(cursor="hand2" if flag else "arrow")
+        self._state = "normal"
+        self._redraw()
+
+    # -- 绘制 ---------------------------------------------------------------
+    def _redraw(self):
+        self.delete("all")
+        t = self._t
+        w, h = self._bw, self._bh
+        if not self._enabled:
+            fill_a, fill_b, fg, stroke = t.track, t.track, t.text_dim, t.stroke
+        elif self._accent:
+            fill_a = t.accent if self._state != "press" else t.accent2
+            fill_b = t.accent2 if self._state != "press" else t.accent
+            fg = "#FFFFFF"
+            stroke = _mix(t.accent, "#FFFFFF", 0.35)
+            if self._state == "hover":
+                fill_a = _mix(t.accent, "#FFFFFF", 0.12)
+                fill_b = _mix(t.accent2, "#FFFFFF", 0.12)
+        else:
+            base_a = t.card_hover if self._state == "hover" else t.card
+            if self._state == "press":
+                base_a = t.bg_bottom
+            fill_a, fill_b = base_a, _mix(base_a, t.bg_top, 0.6)
+            fg = t.text
+            stroke = t.stroke_hi if self._state != "normal" else t.stroke
+
+        r = h // 2 - 1  # 胶囊圆角
+        _hgrad(self, 0, 0, w, h, fill_a, fill_b, steps=10)
+        # 顶部高光：上半部分再叠一层白（玻璃反光）
+        if self._enabled:
+            _hgrad(self, 1, 1, w - 1, h * 0.5,
+                   _mix(fill_a, "#FFFFFF", 0.16 if self._state != "press" else 0.04),
+                   fill_a, steps=5)
+        _rrect(self, 0.5, 0.5, w - 0.5, h - 0.5, r, fill="", outline=stroke,
+               width=1)
+        self.create_text(w / 2, h / 2, text=self._text, fill=fg,
+                         font=self._font)
+
+
+class GlassProgress(tk.Canvas):
+    """圆角玻璃进度条：轨道 + 渐变填充 + 高光。"""
+
+    def __init__(self, parent, theme=None, height=14, bg=None):
+        t = theme or GlassTheme
+        tk.Canvas.__init__(self, parent, height=height,
+                           highlightthickness=0, bd=0,
+                           bg=bg or t.bg_bottom)
+        self._t = t
+        # 不可用 self._h（避免与 tkinter 内部属性混淆）
+        self._ph = height
+        self._value = 0.0
+        self.bind("<Configure>", lambda e: self._redraw())
+        self._redraw()
+
+    def set(self, percent):
+        self._value = max(0.0, min(100.0, float(percent)))
+        self._redraw()
+
+    def get(self):
+        return self._value
+
+    def _redraw(self):
+        self.delete("all")
+        t = self._t
+        w = max(4, self.winfo_width())
+        h = self._ph
+        r = h // 2
+        _rrect(self, 0, 0, w, h, r, fill=t.track, outline=_mix(t.track, "#FFFFFF", 0.12))
+        fw = int(w * self._value / 100.0)
+        if fw >= h:
+            # 条数设上限：进度回调在下载热路径上高频触发，
+            # 渐变条数若随宽度线性增长会导致每次重绘重建大量 item 而卡顿
+            _hgrad(self, 0, 0, fw, h, t.accent, t.accent2,
+                   steps=min(max(8, fw // 3), 48))
+            # 填充条顶部高光
+            self.create_line(3, 3, max(4, fw - 3), 3,
+                             fill=_mix(t.accent, "#FFFFFF", 0.45))
+            _rrect(self, 0, 0, fw, h, r, fill="", outline="")
+
+
+class ToolCardCanvas(tk.Canvas):
+    """工具选择卡片区：圆角玻璃卡片网格，支持点击选中与悬停高光。"""
+
+    def __init__(self, parent, tools, on_toggle, theme=None, columns=2,
+                 card_h=62, gap=10, state_getter=None):
+        t = theme or GlassTheme
+        tk.Canvas.__init__(self, parent, highlightthickness=0, bd=0,
+                           bg=t.bg_bottom)
+        self._t = t
+        self._tools = tools
+        self._on_toggle = on_toggle
+        self._state = state_getter or (lambda tid: False)
+        self._cols = max(1, columns)
+        self._card_h = card_h
+        self._gap = gap
+        self._card_w_pref = 300   # 期望卡宽（只读基准，不随布局回写）
+        self._card_w = 300        # 本次布局实际算出的卡宽
+        self._installed = set()
+        self._hover = None
+        self._pressed = None
+        self._cards = {}          # tool_id -> item id 元组
+        self._geom = []           # (x1, y1, x2, y2, tool_id) 命中区域
+
+        self.bind("<Configure>", lambda e: self._layout())
+        self.bind("<Motion>", self._on_motion)
+        self.bind("<Leave>", lambda e: self._set_hover(None))
+        self.bind("<ButtonPress-1>", self._on_press)
+        self.bind("<ButtonRelease-1>", self._on_release)
+        self.bind("<MouseWheel>", self._on_wheel)
+        self.bind("<Button-4>", lambda e: self._scroll(-2))
+        self.bind("<Button-5>", lambda e: self._scroll(2))
+        self._layout()
+
+    # -- 布局 ---------------------------------------------------------------
+    def _layout(self):
+        # 保留滚动位置：delete("all") 会重置视图，hover 重绘时必须还原
+        try:
+            keep_top = self.yview()[0]
+        except Exception:
+            keep_top = 0.0
+        # 期望卡宽只读：由当前可用宽度一次性推出列数与卡宽，
+        # 不可用上一次的 card_w 反推（否则列数会随 resize 历史漂移）
+        avail = max(1, self.winfo_width() - 12)
+        cols = max(1, int((avail + self._gap) // (self._card_w_pref + self._gap)))
+        self._cols = cols
+        w = avail
+        self._card_w = max(1, (w - (cols + 1) * self._gap) // cols)
+        self.delete("all")
+        self._cards = {}
+        self._geom = []
+
+        rows = (len(self._tools) + cols - 1) // cols
+        total_h = rows * self._card_h + (rows + 1) * self._gap
+        for idx, tool in enumerate(self._tools):
+            r, c = divmod(idx, cols)
+            x1 = self._gap + c * (self._card_w + self._gap)
+            y1 = self._gap + r * (self._card_h + self._gap)
+            x2 = x1 + self._card_w
+            y2 = y1 + self._card_h
+            self._geom.append((x1, y1, x2, y2, tool["id"]))
+            self._draw_card(tool, x1, y1, x2, y2)
+        self.configure(scrollregion=(0, 0, w, max(total_h, 1)))
+        self._total_h = total_h
+        self._view_w = w
+        self._draw_scrollbar()
+        if keep_top:
+            self.yview_moveto(keep_top)
+
+    def _draw_scrollbar(self):
+        """右侧细滚动条（内容超出可视高度时出现，滚动时同步位置）。"""
+        self.delete("sb")
+        view_h = self.winfo_height()
+        total = getattr(self, "_total_h", 0)
+        if view_h <= 1 or total <= view_h:
+            return
+        t = self._t
+        sw = 6
+        sx = self.winfo_width() - sw - 3
+        first = self.yview()[0]
+        thumb_h = max(28, int(view_h * (view_h / float(total))))
+        # 可视滚动距离 = total - view_h；thumb 可移动距离 = view_h - thumb_h
+        ty = int((view_h - thumb_h) * max(0.0, min(1.0, first)))
+        _rrect(self, sx, 2, sx + sw, view_h - 2, sw // 2,
+               fill=_mix(t.bg_bottom, "#FFFFFF", 0.06), outline="", tags="sb")
+        _rrect(self, sx, ty + 2, sx + sw, ty + thumb_h - 2, sw // 2,
+               fill=t.stroke_hi, outline="", tags="sb")
+        self.tag_raise("sb")
+
+    def _draw_card(self, tool, x1, y1, x2, y2):
+        t = self._t
+        tid = tool["id"]
+        selected = bool(self._on_toggle_state(tid))
+        hovered = (self._hover == tid)
+        if selected:
+            base = t.card_on
+        elif hovered:
+            base = t.card_hover
+        else:
+            base = t.card
+        r = t.card_radius
+        # 卡片内部竖向渐变：条数刻意压低（卡片小、色差小，8 条即平滑），
+        # 避免 item 数量膨胀拖慢 hover 时的整体重绘
+        grad = _vgrad(self, x1, y1, x2, y2, _mix(base, "#FFFFFF", 0.07), base,
+                      tags=("card", tid), steps=8)
+        # 顶部高光条（玻璃反光）
+        _hgrad(self, x1 + 2, y1 + 1.5, x2 - 2, y1 + 4,
+               _mix(base, "#FFFFFF", 0.22), _mix(base, "#FFFFFF", 0.02),
+               tags=("card", tid), steps=8)
+        stroke = t.stroke_hi if (hovered or selected) else t.stroke
+        _rrect(self, x1 + 0.5, y1 + 0.5, x2 - 0.5, y2 - 0.5, r, fill="",
+               outline=stroke, width=1, tags=("card", tid))
+        # 选中态左侧强调条
+        if selected:
+            _rrect(self, x1 + 2, y1 + r * 0.6, x1 + 5, y2 - r * 0.6, 2,
+                   fill=t.accent, outline="", tags=("card", tid))
+        # 勾选指示器
+        cx, cy = x1 + 26, (y1 + y2) / 2
+        if selected:
+            self.create_oval(cx - 9, cy - 9, cx + 9, cy + 9, fill=t.accent,
+                             outline=_mix(t.accent, "#FFFFFF", 0.4),
+                             tags=("card", tid))
+            self.create_line(cx - 4, cy, cx - 1, cy + 3.5, cx + 4.5, cy - 3.5,
+                             fill="#FFFFFF", width=2, capstyle=tk.ROUND,
+                             joinstyle=tk.ROUND, tags=("card", tid))
+        else:
+            self.create_oval(cx - 9, cy - 9, cx + 9, cy + 9, fill=t.bg_bottom,
+                             outline=t.stroke_hi, width=1, tags=("card", tid))
+        # 文字（两行：名称 + 状态/说明）
+        self.create_text(x1 + 44, y1 + 19, anchor=tk.W,
+                         text="%d. %s" % (tid, tool["name"]),
+                         fill=t.text, font=("Microsoft YaHei UI", 10, "bold"),
+                         tags=("card", tid))
+        state = tool.get("state_text", "")
+        if tid in self._installed and not state:
+            state = "已安装"
+        color = t.success if state == "已安装" else (
+            t.warn if "编译" in (state or "") else t.text_dim)
+        self.create_text(x1 + 44, y1 + 38, anchor=tk.W,
+                         text=state or tool["desc"],
+                         fill=color, font=("Microsoft YaHei UI", 8),
+                         tags=("card", tid))
+        self._cards[tid] = (grad,)
+
+    # -- 交互 ---------------------------------------------------------------
+    def _on_toggle_state(self, tid):
+        return bool(self._state(tid))
+
+    def _on_wheel(self, e):
+        self._scroll(-1 if e.delta > 0 else 1)
+
+    def _scroll(self, units):
+        self.yview_scroll(units * 3, "units")
+        self._draw_scrollbar()
+
+    def _hit(self, x, y):
+        # 事件坐标是视口坐标，需换算回画布坐标（考虑滚动偏移）
+        cy = self.canvasy(y)
+        for x1, y1, x2, y2, tid in self._geom:
+            if x1 <= x <= x2 and y1 <= cy <= y2:
+                return tid
+        return None
+
+    def _on_motion(self, e):
+        self._set_hover(self._hit(e.x, e.y))
+
+    def _set_hover(self, tid):
+        if tid != self._hover:
+            self._hover = tid
+            self._layout()
+
+    def _on_press(self, e):
+        self._pressed = self._hit(e.x, e.y)
+        if self._pressed is not None:
+            self.focus_set()
+
+    def _on_release(self, e):
+        tid = self._hit(e.x, e.y)
+        if tid is not None and tid == self._pressed:
+            self._on_toggle(tid)
+        self._pressed = None
+        self._layout()
+
+    def mark_installed(self, tid, redraw=True):
+        self._installed.add(tid)
+        if redraw:
+            self._layout()
+
+    def refresh(self):
+        self._layout()
+
+
 class DeployerGUI:
 
     def __init__(self, root):
         self.root = root
+        self.theme = GlassTheme()
+        t = self.theme
         self.root.title("Kali Tools For Windows - 图形化部署工具 v%s" % VERSION)
-        self.root.geometry("860x680")
-        self.root.minsize(760, 600)
-        self.vars = {}
+        self.root.geometry("1120x800")
+        self.root.minsize(980, 680)
+        self.root.configure(bg=t.bg_bottom)
+        self._apply_window_backdrop()
+        self.vars = {tool["id"]: tk.BooleanVar(value=False) for tool in TOOLS}
         self.busy = False
         self.closing = False
         self._msg_queue = queue.Queue()
         self._build_widgets()
-        self._show_disclaimer()
+        self._draw_header()
+        if not self._show_disclaimer():
+            return
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.after(100, self._poll_queue)
         threading.Thread(target=self._detect_installed, daemon=True).start()
+
+    def _apply_window_backdrop(self):
+        """尝试启用 Windows 11 的系统背景材质（Mica/Acrylic）。
+        失败或旧版系统上静默跳过——纯视觉增强，不影响任何功能。"""
+        try:
+            import ctypes
+            hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())
+            if not hwnd:
+                hwnd = self.root.winfo_id()
+            DWMWA_SYSTEMBACKDROP_TYPE = 38
+            DWMSBT_TRANSIENTWINDOW = 3   # 类 Acrylic
+            val = ctypes.c_int(DWMSBT_TRANSIENTWINDOW)
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                ctypes.c_void_p(hwnd), ctypes.c_int(DWMWA_SYSTEMBACKDROP_TYPE),
+                ctypes.byref(val), ctypes.sizeof(val))
+        except Exception:
+            pass
 
     def _on_close(self):
         if self.busy and not messagebox.askyesno("确认退出",
@@ -220,87 +652,170 @@ class DeployerGUI:
             return
         try:
             while True:
-                kind, payload = self._msg_queue.get_nowait()
-                if kind == "log":
-                    self._append_log_ui(payload)
-                elif kind == "status":
-                    self._status_ui(payload)
-                elif kind == "progress":
-                    self._progress_ui(payload)
-                elif kind == "done":
-                    self._done_ui()
-                elif kind == "installed":
-                    self._installed_ui(payload)
-        except queue.Empty:
-            pass
-        self.root.after(100, self._poll_queue)
+                try:
+                    kind, payload = self._msg_queue.get_nowait()
+                except queue.Empty:
+                    break
+                # 单条消息处理异常不得中断整轮排空，否则后续消息会丢失
+                try:
+                    if kind == "log":
+                        self._append_log_ui(payload)
+                    elif kind == "status":
+                        self._status_ui(payload)
+                    elif kind == "progress":
+                        self._progress_ui(payload)
+                    elif kind == "done":
+                        self._done_ui()
+                    elif kind == "installed":
+                        self._installed_ui(payload)
+                except Exception as e:
+                    try:
+                        self.append_log("[ERROR] UI 消息处理异常: %r" % (e,))
+                    except Exception:
+                        pass
+        finally:
+            if not self.closing:
+                self.root.after(100, self._poll_queue)
 
     def _build_widgets(self):
-        main = ttk.Frame(self.root, padding=10)
-        main.pack(fill=tk.BOTH, expand=True)
+        t = self.theme
+        P = t.pad
 
-        title = ttk.Label(main, text="Kali Tools For Windows - 安全工具一键部署",
-                          font=("Microsoft YaHei UI", 14, "bold"))
-        title.pack(anchor=tk.W)
+        # ---------- 顶栏：渐变玻璃标题条 ----------
+        header = tk.Canvas(self.root, height=HEADER_H, highlightthickness=0,
+                           bd=0, bg=t.header_b)
+        header.pack(fill=tk.X, side=tk.TOP)
+        self._header = header
 
-        sub = ttk.Label(main, text="工具部署目录: %s    日志: %s" % (TOOLS_ROOT, LOG_FILE),
-                        foreground="#666")
-        sub.pack(anchor=tk.W, pady=(2, 8))
+        # ---------- 主体 ----------
+        main = tk.Frame(self.root, bg=t.bg_bottom)
+        main.pack(fill=tk.BOTH, expand=True, padx=P, pady=(10, P))
 
-        box = ttk.LabelFrame(main, text="选择要部署的工具")
-        box.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
+        # 工具卡片区
+        cards_wrap = tk.Frame(main, bg=t.bg_bottom)
+        cards_wrap.pack(fill=tk.BOTH, expand=True)
+        lbl = tk.Label(cards_wrap, text="选择要部署的工具", bg=t.bg_bottom,
+                       fg=t.text, font=("Microsoft YaHei UI", 10, "bold"),
+                       anchor=tk.W)
+        lbl.pack(fill=tk.X, pady=(0, 6))
+        self._cards = ToolCardCanvas(cards_wrap, TOOLS, self._toggle_tool,
+                                     theme=t, columns=2, card_h=56, gap=9,
+                                     state_getter=self._tool_state)
+        self._cards.pack(fill=tk.BOTH, expand=True)
 
-        canvas = tk.Canvas(box, highlightthickness=0)
-        vsb = ttk.Scrollbar(box, orient=tk.VERTICAL, command=canvas.yview)
-        inner = ttk.Frame(canvas)
-        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=inner, anchor=tk.NW)
-        canvas.configure(yscrollcommand=vsb.set)
-        canvas.bind("<Enter>", lambda e: canvas.bind_all("<MouseWheel>",
-                    lambda ev: canvas.yview_scroll(int(-ev.delta / 120), "units")))
-        canvas.bind("<Leave>", lambda e: canvas.unbind_all("<MouseWheel>"))
-        vsb.pack(side=tk.RIGHT, fill=tk.Y)
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self._tool_canvas = canvas
+        # 操作按钮行
+        bar = tk.Frame(main, bg=t.bg_bottom)
+        bar.pack(fill=tk.X, pady=(12, 0))
+        self._buttons = []
+        specs = [
+            ("全选", self.select_all, False),
+            ("清空", self.clear_all, False),
+            ("开始部署", self.start_deploy, True),
+            ("卸载工具", self.start_uninstall, False),
+            ("打开工具目录", self.open_dir, False),
+        ]
+        for text, cmd, accent in specs:
+            b = GlassButton(bar, text, cmd, theme=t, accent=accent,
+                            width=124 if accent else 104)
+            b.pack(side=tk.LEFT, padx=(0, 10))
+            self._buttons.append(b)
 
-        self._desc_labels = {}
-        for i, tool in enumerate(TOOLS):
-            var = tk.BooleanVar(value=False)
-            self.vars[tool["id"]] = var
-            cb = ttk.Checkbutton(
-                inner,
-                text="%d. %s" % (tool["id"], tool["name"]),
-                variable=var,
-            )
-            cb.grid(row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=(8, 8), pady=2)
-            desc = ttk.Label(inner, text=tool["desc"], foreground="#888")
-            desc.grid(row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, pady=2)
-            self._desc_labels[tool["id"]] = desc
+        # 进度区（玻璃卡片容器，宽度随窗口自适应）
+        prog_wrap = tk.Canvas(main, height=62, highlightthickness=0, bd=0,
+                              bg=t.bg_bottom)
+        prog_wrap.pack(fill=tk.X, pady=(12, 0))
+        card_id = _rrect(prog_wrap, 0, 0, 10, 62, t.radius,
+                         fill=t.card, outline=t.stroke)
 
-        btns = ttk.Frame(main)
-        btns.pack(fill=tk.X, pady=(0, 8))
+        def _fit_prog_card(event, cv=prog_wrap, cid=card_id):
+            cv.coords(cid, 0, 0, max(10, int(event.width)), 62)
+            cv.tag_lower(cid)
 
-        ttk.Button(btns, text="全选", command=self.select_all).pack(side=tk.LEFT, padx=(0, 6))
-        ttk.Button(btns, text="清空", command=self.clear_all).pack(side=tk.LEFT, padx=(0, 6))
-        ttk.Button(btns, text="开始部署", command=self.start_deploy).pack(side=tk.LEFT, padx=(0, 6))
-        ttk.Button(btns, text="卸载工具", command=self.start_uninstall).pack(side=tk.LEFT, padx=(0, 6))
-        ttk.Button(btns, text="打开工具目录", command=self.open_dir).pack(side=tk.LEFT, padx=(0, 6))
+        prog_wrap.bind("<Configure>", _fit_prog_card)
+        tk.Label(prog_wrap, text="进度", bg=t.card, fg=t.text_dim,
+                 font=("Microsoft YaHei UI", 8)).place(x=14, y=8)
+        self._pct_lbl = tk.Label(prog_wrap, text="0%", bg=t.card, fg=t.accent,
+                                 font=("Segoe UI", 10, "bold"))
+        self._pct_lbl.place(x=58, y=6)
+        self.progress = GlassProgress(prog_wrap, theme=t, height=10, bg=t.card)
+        self.progress.place(x=14, y=34, relwidth=0.985, height=10)
+        self._progress_sink = prog_wrap
 
-        pbar = ttk.LabelFrame(main, text="进度")
-        pbar.pack(fill=tk.X, pady=(0, 8))
-        self.progress = ttk.Progressbar(pbar, maximum=100, value=0)
-        self.progress.pack(fill=tk.X, padx=6, pady=6)
-        self.progress_lbl = ttk.Label(pbar, text="", foreground="#666")
-        self.progress_lbl.pack(anchor=tk.W, padx=6, pady=(0, 6))
+        # 日志区（固定高度，把空间尽量留给工具卡片）
+        log_wrap = tk.Frame(main, bg=t.bg_bottom)
+        log_wrap.pack(fill=tk.X, pady=(12, 0))
+        self._log_wrap = log_wrap
+        tk.Label(log_wrap, text="部署日志", bg=t.bg_bottom, fg=t.text,
+                 font=("Microsoft YaHei UI", 10, "bold"),
+                 anchor=tk.W).pack(fill=tk.X, pady=(0, 6))
+        shell = tk.Frame(log_wrap, bg=t.card, height=LOG_H)
+        shell.pack(fill=tk.X)
+        shell.pack_propagate(False)
+        self._log_shell = shell
+        self.log = scrolledtext.ScrolledText(
+            shell, height=1, state=tk.DISABLED, font=("Consolas", 9),
+            bg=t.log_bg, fg="#C8D2E8", insertbackground=t.accent,
+            relief=tk.FLAT, bd=0, highlightthickness=0,
+            selectbackground=_mix(t.accent, t.bg_bottom, 0.55),
+            selectforeground="#FFFFFF", padx=10, pady=6)
+        self.log.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
 
-        logbox = ttk.LabelFrame(main, text="部署日志")
-        logbox.pack(fill=tk.BOTH, expand=True)
-        self.log = scrolledtext.ScrolledText(logbox, height=12, state=tk.DISABLED,
-                                             font=("Consolas", 9))
-        self.log.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        # 状态栏
+        self.status = tk.Label(main, text="就绪", anchor=tk.W, bg=t.bg_bottom,
+                               fg=t.accent,
+                               font=("Microsoft YaHei UI", 9))
+        self.status.pack(fill=tk.X, pady=(10, 0))
+        self.root.bind("<Configure>", self._on_resize, add="+")
 
-        self.status = ttk.Label(main, text="就绪", anchor=tk.W, foreground="#008")
-        self.status.pack(fill=tk.X, pady=(6, 0))
+    # ---------- UI 辅助（表现层） ----------
+    def _tool_state(self, tid):
+        var = self.vars.get(tid)
+        return bool(var.get()) if var is not None else False
+
+    def _toggle_tool(self, tid):
+        var = self.vars.get(tid)
+        if var is not None:
+            var.set(not var.get())
+
+    def _on_resize(self, event):
+        # 顶栏渐变需随窗口宽度重绘；用事件宽度避免读到布局前的旧值。
+        # 宽度未变化时不重绘（拖拽/最大化时避免高频抖动）
+        if event.widget is self.root:
+            w = int(event.width)
+            if w != getattr(self, "_hdr_w", None):
+                self._hdr_w = w
+                self._draw_header(w)
+
+    def _draw_header(self, width=None):
+        h = self._header
+        h.delete("all")
+        w = int(width) if width else max(400, h.winfo_width())
+        t = self.theme
+        _hgrad(h, 0, 0, w, HEADER_H, t.header_a, t.header_b, steps=96)
+        # 玻璃高光斜带
+        _hgrad(h, 0, 0, w, 46, _mix(t.header_a, "#FFFFFF", 0.10),
+               t.header_a, steps=32)
+        # 底部渐隐分隔线
+        _vgrad(h, 0, HEADER_H - 2, w, HEADER_H, t.header_b, t.bg_bottom,
+               steps=2)
+        h.create_text(HEADER_PAD, 34, anchor=tk.W, text="Kali Tools For Windows",
+                      fill="#FFFFFF", font=("Microsoft YaHei UI", 19, "bold"))
+        h.create_text(HEADER_PAD, 62, anchor=tk.W,
+                      text="安全工具一键部署 · GUI",
+                      fill=_mix(t.header_b, "#FFFFFF", 0.72),
+                      font=("Microsoft YaHei UI", 9))
+        h.create_text(HEADER_PAD, 82, anchor=tk.W,
+                      text="目录 %s    日志 %s" % (TOOLS_ROOT, LOG_FILE),
+                      fill=_mix(t.header_b, "#FFFFFF", 0.45),
+                      font=("Microsoft YaHei UI", 8))
+        # 右侧版本徽章
+        bw, bh = 96, 30
+        bx, by = w - bw - HEADER_PAD, 34
+        _rrect(h, bx, by, bx + bw, by + bh, bh // 2,
+               fill=_mix(t.header_a, "#FFFFFF", 0.14),
+               outline=_mix(t.header_a, "#FFFFFF", 0.34))
+        h.create_text(bx + bw / 2, by + bh / 2, text="v%s" % VERSION,
+                      fill="#FFFFFF", font=("Segoe UI", 10, "bold"))
 
     def _show_disclaimer(self):
         ok = messagebox.askyesno(
@@ -311,7 +826,7 @@ class DeployerGUI:
             "是否同意并继续？")
         if not ok:
             self.root.destroy()
-            return
+        return ok
 
     def append_log(self, msg):
         self._msg_queue.put(("log", msg))
@@ -335,17 +850,24 @@ class DeployerGUI:
     def _progress_ui(self, value):
         if self.closing:
             return
-        self.progress["value"] = value
+        self.progress.set(value)
+        try:
+            self._pct_lbl.config(text="%d%%" % int(round(value)))
+        except Exception:
+            pass
 
     def _installed_ui(self, ids):
         if self.closing:
             return
+        # 先置位再标记：否则 mark_installed 的重绘读到的仍是旧值，
+        # 卡片不会显示为已勾选。全部处理完统一重绘一次（避免 N 次全量重绘）
         for tid in ids:
-            label = self._desc_labels.get(tid)
-            if label:
-                label.config(text="已安装", foreground="#080")
-            self.vars[tid].set(True)
+            var = self.vars.get(tid)
+            if var is not None:
+                var.set(True)
+            self._cards.mark_installed(tid, redraw=False)
         if ids:
+            self._cards.refresh()
             self.status.config(text="检测到 %d 个工具已安装（已自动勾选）" % len(ids))
 
     def _done_ui(self):
@@ -368,10 +890,12 @@ class DeployerGUI:
     def select_all(self):
         for var in self.vars.values():
             var.set(True)
+        self._cards.refresh()
 
     def clear_all(self):
         for var in self.vars.values():
             var.set(False)
+        self._cards.refresh()
 
     def open_dir(self):
         os.makedirs(TOOLS_ROOT, exist_ok=True)
