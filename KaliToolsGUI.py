@@ -6,11 +6,13 @@ import json
 import hashlib
 import threading
 import datetime
-from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, QTimer, QEvent, Signal, QRect
+from PySide6.QtGui import (QColor, QFont, QGuiApplication, QImage, QPainter,
+                           QPixmap)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame,
-                               QGridLayout, QHBoxLayout, QLabel,
-                               QMessageBox, QPlainTextEdit,
+                               QGraphicsBlurEffect, QGraphicsPixmapItem,
+                               QGraphicsScene, QGridLayout, QHBoxLayout,
+                               QLabel, QMessageBox, QPlainTextEdit,
                                QProgressBar, QPushButton, QScrollArea,
                                QVBoxLayout, QWidget)
 import urllib.request
@@ -24,7 +26,6 @@ TOOLS_ROOT = r"C:\SecTools"
 LOG_FILE = os.path.join(TOOLS_ROOT, "deploy_log.txt")
 GH_PROXY = "https://gh-proxy.com/"
 APP_DIRS = ("bin", "x64", "run", "hashcat", "Bundled")
-
 TOOLS = [
     {"id": 1, "name": "Nmap", "desc": "端口扫描器", "method": "exe",
      "url": "https://nmap.org/dist/nmap-7.95-setup.exe", "dir": "nmap",
@@ -197,98 +198,128 @@ def verify_sha256(path, expected):
 
 
 # =============================================================================
-# UI 层 —— PySide6 (Qt 6) 原生控件
-# 渲染、控件、布局、滚动条、对话框全部使用 Qt 原生 API 与 QSS 样式表，
-# 不含任何自绘绘制代码。部署 / 下载 / 校验 / 解压等核心逻辑保持不变。
+# UI 层 —— PySide6 (Qt 6) 原生控件 + macOS 风格毛玻璃
+# 控件、布局、滚动条、对话框全部使用 Qt 原生 API 与 QSS 样式表；
+# 毛玻璃由「抓取桌面背景 -> 降采样 -> 高斯模糊 -> 半透明色调叠加」实现。
+# 部署 / 下载 / 校验 / 解压等核心逻辑保持不变。
 # =============================================================================
 
 APP_TITLE = "Kali Tools For Windows"
 CARDS_PER_ROW = 3          # 工具卡片每行列数
 LOG_HEIGHT = 150           # 日志区固定高度
+TITLEBAR_H = 52            # 自绘标题栏高度（无边框窗口）
+GLASS_SAMPLE = 4           # 背景降采样倍数（越大越快/越柔和）
+RESIZE_MARGIN = 7           # 窗口边缘缩放热区宽度（像素）
+GLASS_TINT = QColor(22, 24, 34, 122)   # 玻璃色调叠加（macOS vibrancy 观感），只读勿改
 
-# 深色玻璃主题配色（与迁移前视觉一致，全部通过 QSS 表达）
-C_BG = "#080B14"
-C_HEADER_A = "#2A3358"
-C_HEADER_B = "#4B3A7A"
-C_CARD = "#171D2E"
-C_CARD_HOVER = "#1F2740"
-C_CARD_ON = "#1C2742"
-C_STROKE = "#2C3550"
-C_STROKE_HI = "#5C6B99"
-C_TEXT = "#EAEDF7"
-C_TEXT_DIM = "#8E99B8"
+# 毛玻璃主题配色：控件一律半透明，让底层模糊背景透出来
+# （Windows 的 DWM 原生材质要求窗口带系统标题栏，与无边框风格冲突，
+#   因此这里用软件模糊实现，跨 Windows 10/11 效果一致）
+C_BG = "#0E1018"                # 采样失败时的兜底底色
+C_CARD = "rgba(255, 255, 255, 30)"
+C_CARD_HOVER = "rgba(255, 255, 255, 58)"
+C_CARD_ON = "rgba(90, 130, 255, 46)"
+C_STROKE = "rgba(255, 255, 255, 46)"
+C_STROKE_HI = "rgba(255, 255, 255, 110)"
+C_TEXT = "#F2F4F8"
+C_TEXT_DIM = "#B7BECD"
 C_ACCENT = "#5B8CFF"
 C_ACCENT2 = "#A96BFF"
-C_SUCCESS = "#3DDC97"
-C_LOG_BG = "#0C101C"
-C_TRACK = "#232B44"
+C_SUCCESS = "#4AE3A8"
+C_LOG_BG = "rgba(10, 12, 20, 150)"
+C_TRACK = "rgba(255, 255, 255, 42)"
 
 QSS = """\
-QWidget {
-    background: %(bg)s; color: %(text)s;
-    font-family: "Microsoft YaHei UI"; font-size: 13px;
-}
-QFrame#header {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                stop:0 %(hdr_a)s, stop:1 %(hdr_b)s);
+/* 顶层窗口背景由 paintEvent 绘制模糊底图，这里必须透明 */
+QWidget { background: transparent; color: %(text)s;
+          font-family: "Microsoft YaHei UI"; font-size: 13px; }
+QFrame#titlebar {
+    background: rgba(255, 255, 255, 26);
     border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 40);
 }
 QFrame#panel {
-    background: %(card)s; border: 1px solid %(stroke)s;
-    border-radius: 14px;
+    background: %(card)s;
+    border: 1px solid %(stroke)s; border-radius: 14px;
 }
 QFrame#card {
-    background: %(card)s; border: 1px solid %(stroke)s;
-    border-radius: 14px;
+    background: %(card)s;
+    border: 1px solid %(stroke)s; border-radius: 14px;
 }
 QFrame#card:hover { background: %(card_hover)s; border-color: %(stroke_hi)s; }
 QFrame#card[state="on"] { background: %(card_on)s; border-color: %(accent)s; }
 QFrame#card[state="on"]:hover { background: %(card_hover)s; border-color: %(accent)s; }
 QLabel { background: transparent; }
-QLabel#title {
-    color: #FFFFFF; font-size: 27px; font-weight: bold;
-}
-QLabel#subtitle { color: %(dim)s; font-size: 13px; }
-QLabel#paths { color: %(dim)s; font-size: 12px; }
-QLabel#section { color: %(text)s; font-size: 14px; font-weight: bold; }
+QLabel#title { color: #FFFFFF; font-size: 17px; font-weight: 600; }
+QLabel#subtitle { color: %(dim)s; font-size: 12px; }
+QLabel#paths { color: %(dim)s; font-size: 11px; }
+QLabel#section { color: %(text)s; font-size: 13px; font-weight: 600; }
 QLabel#status { color: %(accent)s; font-size: 13px; }
 QLabel#pct { color: %(accent)s; font-size: 13px; font-weight: bold; }
 QLabel#badge {
-    color: #FFFFFF; font-size: 14px; font-weight: bold;
-    background: rgba(255,255,255,38);
-    border: 1px solid rgba(255,255,255,110);
-    border-radius: 14px; padding: 6px 18px;
+    color: #FFFFFF; font-size: 12px; font-weight: 600;
+    background: rgba(255, 255, 255, 40);
+    border: 1px solid rgba(255, 255, 255, 90);
+    border-radius: 11px; padding: 3px 12px;
 }
 QLabel#desc { color: %(dim)s; font-size: 12px; }
 QLabel#desc[installed="1"] { color: %(success)s; }
 QCheckBox { color: %(text)s; background: transparent; spacing: 10px; }
 QCheckBox::indicator {
     width: 18px; height: 18px; border-radius: 9px;
-    border: 1px solid %(stroke_hi)s; background: %(bg)s;
+    border: 1px solid rgba(255, 255, 255, 130);
+    background: rgba(0, 0, 0, 90);
 }
 QCheckBox::indicator:hover { border-color: %(accent)s; }
 QCheckBox::indicator:checked { background: %(accent)s; border: 1px solid #FFFFFF; }
 QPushButton {
-    background: %(card)s; border: 1px solid %(stroke)s;
-    border-radius: 17px; padding: 9px 22px;
-    color: %(text)s; font-size: 14px;
+    background: rgba(255, 255, 255, 38);
+    border: 1px solid rgba(255, 255, 255, 80);
+    border-radius: 15px; padding: 7px 18px;
+    color: %(text)s; font-size: 13px;
 }
-QPushButton:hover { background: %(card_hover)s; border-color: %(stroke_hi)s; }
-QPushButton:pressed { background: %(bg)s; }
-QPushButton:disabled { background: %(track)s; color: %(dim)s; }
+QPushButton:hover {
+    background: rgba(255, 255, 255, 74);
+    border-color: rgba(255, 255, 255, 150);
+}
+QPushButton:pressed { background: rgba(0, 0, 0, 90); }
+QPushButton:disabled {
+    background: rgba(255, 255, 255, 18); color: rgba(255, 255, 255, 90);
+}
 QPushButton#primary {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                 stop:0 %(accent)s, stop:1 %(accent2)s);
-    border: none; color: #FFFFFF; font-weight: bold;
+    border: 1px solid rgba(255, 255, 255, 120);
+    color: #FFFFFF; font-weight: 600;
 }
 QPushButton#primary:hover {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                 stop:0 #7BA1FF, stop:1 #BE8BFF);
 }
-QPushButton#primary:disabled { background: %(track)s; color: %(dim)s; }
+QPushButton#primary:disabled {
+    background: %(track)s; color: rgba(255, 255, 255, 90);
+}
+/* macOS 交通灯按钮：默认纯色圆点，悬停时才显示符号 */
+/* 三个交通灯各写独立规则，避免共享规则被各自的 :hover 状态互相污染 */
+/* 注：Qt QSS 支持逗号分隔的多选择器（见下方 QScrollBar 规则） */
+QPushButton#tl_close {
+    background: #FF5F57; border: none; border-radius: 7px;
+    font-size: 9px; font-weight: 700; color: rgba(0, 0, 0, 0);
+}
+QPushButton#tl_close:hover { color: rgba(0, 0, 0, 190); }
+QPushButton#tl_min {
+    background: #FEBC2E; border: none; border-radius: 7px;
+    font-size: 9px; font-weight: 700; color: rgba(0, 0, 0, 0);
+}
+QPushButton#tl_min:hover { color: rgba(0, 0, 0, 190); }
+QPushButton#tl_max {
+    background: #28C840; border: none; border-radius: 7px;
+    font-size: 9px; font-weight: 700; color: rgba(0, 0, 0, 0);
+}
+QPushButton#tl_max:hover { color: rgba(0, 0, 0, 190); }
 QProgressBar {
     background: %(track)s; border: none; border-radius: 6px;
-    height: 12px; text-align: center;
+    height: 10px; text-align: center;
 }
 QProgressBar::chunk {
     border-radius: 6px;
@@ -296,30 +327,29 @@ QProgressBar::chunk {
                 stop:0 %(accent)s, stop:1 %(accent2)s);
 }
 QPlainTextEdit {
-    background: %(log_bg)s; color: #C8D2E8;
+    background: %(log_bg)s; color: #D6DCEC;
     border: 1px solid %(stroke)s; border-radius: 12px;
     font-family: Consolas; font-size: 13px;
     selection-background-color: %(accent)s;
 }
 QScrollArea { border: none; background: transparent; }
 QScrollArea > QWidget { background: transparent; }
-QWidget#canvas { background: transparent; }
 QScrollBar:vertical {
-    background: transparent; width: 12px; margin: 2px; border-radius: 6px;
+    background: transparent; width: 10px; margin: 2px; border-radius: 5px;
 }
 QScrollBar::handle:vertical {
-    background: %(stroke_hi)s; border-radius: 5px; min-height: 32px;
+    background: rgba(255, 255, 255, 90);
+    border-radius: 4px; min-height: 32px;
 }
-QScrollBar::handle:vertical:hover { background: %(accent)s; }
+QScrollBar::handle:vertical:hover { background: rgba(255, 255, 255, 160); }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
 QScrollBar:horizontal { height: 0; }
 """ % {
-    "bg": C_BG, "hdr_a": C_HEADER_A, "hdr_b": C_HEADER_B, "card": C_CARD,
-    "card_hover": C_CARD_HOVER, "card_on": C_CARD_ON, "stroke": C_STROKE,
-    "stroke_hi": C_STROKE_HI, "text": C_TEXT, "dim": C_TEXT_DIM,
-    "accent": C_ACCENT, "accent2": C_ACCENT2, "success": C_SUCCESS,
-    "log_bg": C_LOG_BG, "track": C_TRACK,
+    "card": C_CARD, "card_hover": C_CARD_HOVER, "card_on": C_CARD_ON,
+    "stroke": C_STROKE, "stroke_hi": C_STROKE_HI, "text": C_TEXT,
+    "dim": C_TEXT_DIM, "accent": C_ACCENT, "accent2": C_ACCENT2,
+    "success": C_SUCCESS, "log_bg": C_LOG_BG, "track": C_TRACK,
 }
 
 _CHECKED = int(Qt.CheckState.Checked.value)
@@ -419,22 +449,184 @@ class ToolCard(QFrame):
 
 
 class _MainWindow(QWidget):
-    """顶层窗口：把关闭事件接到 GUI 的确认逻辑。
+    """无边框顶层窗口 + macOS 风格毛玻璃背景。
 
-    对应迁移前 tkinter 的 root.protocol("WM_DELETE_WINDOW", self._on_close)。
-    没有它，部署过程中点右上角 X 会直接退出、把 daemon 工作线程砍在半路。
+    背景实现：抓取窗口所在区域的桌面画面 -> 降采样 -> QGraphicsBlurEffect
+    高斯模糊 -> 叠加半透明玻璃色调。Windows 的 DWM 原生材质
+    （DWMWA_SYSTEMBACKDROP_TYPE）要求窗口带系统标题栏，与无边框风格冲突，
+    故采用软件模糊，Windows 10/11 表现一致。
     """
+
+    _backdrop_errors = 0        # 背景采样异常计数（节流上报用）
 
     def __init__(self):
         super().__init__()
         self.gui = None
+        self._backdrop = None
+        self._resample_pending = False
+        self._blur_scene = QGraphicsScene(self)
+        self._blur_item = QGraphicsPixmapItem()
+        self._blur_effect = QGraphicsBlurEffect()
+        self._blur_effect.setBlurRadius(30.0 / GLASS_SAMPLE)
+        self._blur_item.setGraphicsEffect(self._blur_effect)
+        self._blur_scene.addItem(self._blur_item)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setWindowFlags(Qt.WindowType.Window |
+                            Qt.WindowType.FramelessWindowHint)
+
+    # ---- 毛玻璃背景 ----
+    def refresh_backdrop(self):
+        """重新采样并模糊窗口背后的桌面画面（失败时保留兜底底色）。"""
+        try:
+            if self.isMinimized() or self.width() < 8 or self.height() < 8:
+                return
+            geo = self.geometry()
+            screen = self.screen() or QGuiApplication.primaryScreen()
+            if screen is None:
+                return
+            # 按窗口区域全分辨率抓取，再降采样模糊（抓取本身无法降采样）
+            w = max(1, geo.width() // GLASS_SAMPLE)
+            h = max(1, geo.height() // GLASS_SAMPLE)
+            shot = screen.grabWindow(0, geo.x(), geo.y(),
+                                     geo.width(), geo.height())
+            img = shot.toImage()
+            if img.isNull():
+                return
+            small = img.scaled(w, h, Qt.AspectRatioMode.IgnoreAspectRatio,
+                               Qt.TransformationMode.SmoothTransformation)
+            self._blur_item.setPixmap(QPixmap.fromImage(small))
+            out = QImage(w, h, QImage.Format.Format_ARGB32_Premultiplied)
+            out.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(out)
+            self._blur_scene.render(painter, QRect(0, 0, w, h),
+                                    QRect(0, 0, w, h))
+            painter.end()
+            self._backdrop = out.scaled(
+                self.size(), Qt.AspectRatioMode.IgnoreAspectRatio,
+                Qt.TransformationMode.SmoothTransformation)
+            self.update()
+        except RuntimeError:
+            # QWidget 的 C++ 对象已被析构（窗口关闭后定时器仍触发）：静默退出
+            return
+        except Exception as exc:
+            # 采样失败：保留上一帧画面，首帧才退回兜底底色（视觉更平滑）。
+            # 完全静默会让「背景一直不更新」这类问题无法定位，故节流上报到 stderr
+            if self._backdrop is None:
+                self.update()
+            self._note_backdrop_error(exc)
+
+    @classmethod
+    def _note_backdrop_error(cls, exc):
+        """采样异常节流上报（首次及每 20 次一条，避免刷屏）。"""
+        cls._backdrop_errors += 1
+        n = cls._backdrop_errors
+        if n == 1 or n % 20 == 0:
+            print("[glass] 背景采样失败 #%d: %r" % (n, exc), file=sys.stderr)
+
+    def paintEvent(self, event):
+        """先画模糊底图与玻璃色调，再由子控件叠加半透明玻璃层。"""
+        painter = QPainter(self)
+        if self._backdrop is not None:
+            painter.drawImage(self.rect(), self._backdrop)
+        else:
+            painter.fillRect(self.rect(), QColor(C_BG))
+        painter.fillRect(self.rect(), GLASS_TINT)
+        painter.end()
+
+    def _schedule_backdrop(self, delay=180):
+        """合并高频请求（拖动窗口时只做一次重采样）。"""
+        if self._resample_pending:
+            return
+        self._resample_pending = True
+        # 传 self 作为 context：窗口析构后定时器自动取消，不会打到已释放的对象
+        QTimer.singleShot(delay, self, self._do_resample)
+
+    def _do_resample(self):
+        self._resample_pending = False
+        self.refresh_backdrop()
+
+    # ---- 无边框窗口交互 ----
+    def showEvent(self, event):
+        super().showEvent(event)
+        # 复用合并逻辑，避免与随后的拖动/缩放重复抓屏
+        self._schedule_backdrop(220)
+
+    def moveEvent(self, event):
+        super().moveEvent(event)
+        self._schedule_backdrop()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._schedule_backdrop(260)
+
+    def changeEvent(self, event):
+        # 切换到其他窗口、或从最小化恢复时都要刷新，保证背景是最新的
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.ActivationChange:
+            self._schedule_backdrop(60)
+        elif event.type() == QEvent.Type.WindowStateChange:
+            # 只有「从最小化恢复」才需要丢弃旧尺寸图；最大化/还原仅重采样，
+            # 否则每次最大化都会闪一下未模糊的灰底
+            was_min = bool(event.oldState() & Qt.WindowState.WindowMinimized)
+            if was_min and not self.isMinimized():
+                self._backdrop = None
+                self.update()
+            self._schedule_backdrop(30)
 
     def closeEvent(self, event):
+        """关闭时仍走 GUI 的确认逻辑（部署中点 X 必须二次确认）。"""
         gui = self.gui
         if gui is not None and not gui.closing and not gui.confirm_close():
             event.ignore()          # 用户取消 -> 保持窗口打开
             return
         event.accept()
+
+    def keyPressEvent(self, event):
+        """Esc 关闭窗口（无边框窗口没有系统标题栏的关闭入口）。"""
+        if event.key() == Qt.Key.Key_Escape:
+            self.close()
+            return
+        super().keyPressEvent(event)
+
+    def _resize_edges(self, pos):
+        """返回落在窗口边缘热区内的边集合（非拖动区域用空集合）。"""
+        m = RESIZE_MARGIN
+        w, h = self.width(), self.height()
+        edges = Qt.Edge(0)
+        if pos.x() >= 0 and pos.x() <= m:
+            edges |= Qt.Edge.LeftEdge
+        elif w - pos.x() <= m:
+            edges |= Qt.Edge.RightEdge
+        if pos.y() >= 0 and pos.y() <= m:
+            edges |= Qt.Edge.TopEdge
+        elif h - pos.y() <= m:
+            edges |= Qt.Edge.BottomEdge
+        return edges
+
+    def mousePressEvent(self, event):
+        """标题栏 -> 系统拖动；窗口边缘 -> 系统缩放。"""
+        if event.button() != Qt.MouseButton.LeftButton:
+            super().mousePressEvent(event)
+            return
+        pos = event.position().toPoint()
+        handle = self.windowHandle()
+        if handle is None:
+            super().mousePressEvent(event)
+            return
+        edges = self._resize_edges(pos)
+        if edges != Qt.Edge(0):
+            # 最大化时不做系统缩放：Windows 对已最大化窗口的缩放行为未定义，
+            # 可能把窗口意外还原
+            if not self.isMaximized():
+                handle.startSystemResize(edges)
+                return
+            super().mousePressEvent(event)
+            return
+        # 标题栏空白处才拖动；标题栏按钮是子控件，会自行消费点击，不会走到这里
+        if pos.y() <= TITLEBAR_H:
+            handle.startSystemMove()
+            return
+        super().mousePressEvent(event)
 
 
 class DeployerGUI:
@@ -516,26 +708,40 @@ class DeployerGUI:
         outer.setContentsMargins(0, 0, 0, 14)
         outer.setSpacing(0)
 
-        # ---------- 顶栏 ----------
+        # ---------- 自绘标题栏（无边框窗口） ----------
         header = QFrame(root)
-        header.setObjectName("header")
-        header.setFixedHeight(104)
+        header.setObjectName("titlebar")
+        header.setFixedHeight(TITLEBAR_H)
         hl = QHBoxLayout(header)
-        hl.setContentsMargins(22, 14, 22, 12)
+        hl.setContentsMargins(20, 8, 10, 8)
         hbox = QVBoxLayout()
-        hbox.setSpacing(2)
+        hbox.setSpacing(1)
         title = QLabel(APP_TITLE, header)
         title.setObjectName("title")
         sub = QLabel("安全工具一键部署 · GUI", header)
         sub.setObjectName("subtitle")
-        paths = QLabel("目录 %s    日志 %s" % (TOOLS_ROOT, LOG_FILE), header)
-        paths.setObjectName("paths")
-        for w in (title, sub, paths):
+        for w in (title, sub):
             hbox.addWidget(w)
         hl.addLayout(hbox, 1)
         badge = QLabel("v%s" % VERSION, header)
         badge.setObjectName("badge")
         hl.addWidget(badge, 0, Qt.AlignmentFlag.AlignVCenter)
+        hl.addSpacing(14)
+        # 窗口控制按钮（macOS 交通灯：红-黄-绿，靠左排列）
+        for text, tip, slot, extra in (
+                ("", "关闭", self._win_close, "tl_close"),
+                ("", "最小化", self._win_minimize, "tl_min"),
+                ("", "最大化", self._win_toggle_maximize, "tl_max")):
+            btn = QPushButton(text, header)
+            btn.setObjectName(extra)
+            btn.setToolTip(tip)
+            btn.setAccessibleName(tip)
+            btn.setFixedSize(14, 14)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.clicked.connect(slot)
+            hl.addWidget(btn, 0, Qt.AlignmentFlag.AlignVCenter)
+            hl.addSpacing(8)
+        hl.addSpacing(6)
         outer.addWidget(header)
 
         # ---------- 主体 ----------
@@ -543,6 +749,9 @@ class DeployerGUI:
         bl = QVBoxLayout(body)
         bl.setContentsMargins(16, 12, 16, 0)
         bl.setSpacing(12)
+        paths = QLabel("部署目录 %s    日志 %s" % (TOOLS_ROOT, LOG_FILE), body)
+        paths.setObjectName("paths")
+        bl.addWidget(paths)
         bl.addWidget(self._section_label("选择要部署的工具", body))
 
         scroll = QScrollArea(body)
@@ -619,6 +828,19 @@ class DeployerGUI:
 
     def _on_card_toggled(self, tid, checked):
         self.vars[tid] = bool(checked)
+
+    # ---- 无边框窗口按钮 ----
+    def _win_minimize(self):
+        self.root.showMinimized()
+
+    def _win_toggle_maximize(self):
+        if self.root.isMaximized():
+            self.root.showNormal()
+        else:
+            self.root.showMaximized()
+
+    def _win_close(self):
+        self._on_close()
 
     def _set_tool_state(self, tid, value):
         card = self._cards.get(tid)

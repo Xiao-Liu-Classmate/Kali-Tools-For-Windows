@@ -113,6 +113,343 @@ class TestMigrationConstraints(unittest.TestCase):
 # =============================================================================
 # 2. 构建参数一致性（build_exe.bat 与 release.yml 必须保持同步）
 # =============================================================================
+def _fake_screen(size, stripes=True):
+    """构造可控的假屏幕：返回一张高对比竖条纹图，用于确定性验证模糊。"""
+    from PySide6.QtCore import QRect
+    from PySide6.QtGui import QColor, QImage, QPainter
+
+    class _Shot:
+        def __init__(self, img):
+            self._img = img
+
+        def toImage(self):
+            return self._img
+
+    class _Screen:
+        def __init__(self, img):
+            self._img = img
+            self.calls = 0
+
+        def grabWindow(self, *_args):
+            self.calls += 1
+            return _Shot(self._img)
+
+    img = QImage(size, QImage.Format.Format_RGB32)
+    painter = QPainter(img)
+    painter.fillRect(img.rect(), QColor(255, 255, 255))
+    if stripes:                      # 间距 16px 的黑条：模糊后方差显著下降
+        x = 0
+        while x < size.width():
+            painter.fillRect(QRect(x, 0, 8, size.height()), QColor(0, 0, 0))
+            x += 16
+    painter.end()
+    return _Screen(img)
+
+
+def _variance(qimage):
+    """灰度方差：模糊会让方差明显下降。"""
+    img = qimage.convertToFormat(
+        __import__("PySide6.QtGui", fromlist=["QImage"]).QImage.Format.Format_RGB32)
+    total = n = 0
+    w, h = img.width(), img.height()
+    for y in range(0, h, max(1, h // 40)):
+        for x in range(0, w, max(1, w // 40)):
+            c = img.pixelColor(x, y)
+            total += (c.red() + c.green() + c.blue()) / 3.0
+            n += 1
+    if n == 0:
+        return 0.0
+    mean = total / n
+    acc = 0.0
+    for y in range(0, h, max(1, h // 40)):
+        for x in range(0, w, max(1, w // 40)):
+            c = img.pixelColor(x, y)
+            d = (c.red() + c.green() + c.blue()) / 3.0 - mean
+            acc += d * d
+    return acc / n
+
+
+class TestGlassBackdrop(unittest.TestCase):
+    """macOS 风格毛玻璃：无边框窗口 + 背景采样模糊。"""
+
+    def _win(self):
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance() or QApplication([])
+        root = g._MainWindow()
+        with mock.patch.object(g, "_ask_yes_no", return_value=True), \
+             mock.patch.object(g, "threading"):
+            gui = g.DeployerGUI(root)
+            timer = getattr(gui, "_timer", None)
+            if timer is not None:
+                timer.stop()
+        return gui, root
+
+    def setUp(self):
+        self._roots = []
+
+    def tearDown(self):
+        from PySide6.QtWidgets import QApplication, QWidget
+        for r in self._roots:
+            try:
+                r.close()
+                r.deleteLater()
+            except Exception:
+                pass
+        QApplication.processEvents()
+
+    def test_frameless_and_translucent(self):
+        from PySide6.QtCore import Qt
+        _gui, root = self._win()
+        self._roots.append(root)
+        self.assertTrue(root.windowFlags() & Qt.WindowType.FramelessWindowHint)
+        self.assertTrue(
+            root.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground))
+
+    def test_gui_is_wired_to_window(self):
+        gui, root = self._win()
+        self._roots.append(root)
+        self.assertIs(root.gui, gui)
+
+    # ---- 背景采样 ----
+    def test_backdrop_is_blurred_not_pasted(self):
+        """核心行为：输出必须比原图模糊（方差显著下降），而非直接贴原图。"""
+        gui, root = self._win()
+        self._roots.append(root)
+        screen = _fake_screen(root.size())
+        with mock.patch.object(type(root), "screen", return_value=screen):
+            root.refresh_backdrop()
+        self.assertIsNotNone(root._backdrop, "应产出背景图")
+        self.assertEqual(root._backdrop.size(), root.size())
+        before = _variance(screen._img)
+        after = _variance(root._backdrop)
+        self.assertGreater(before, 500.0, "测试图案本身应有明显对比")
+        self.assertLess(after, before * 0.6,
+                        "输出方差应显著低于原图，证明模糊已生效")
+
+    def test_backdrop_falls_back_to_primary_screen(self):
+        """取不到当前屏幕时应回退到主屏幕，而不是抛异常或留空。"""
+        from PySide6.QtGui import QGuiApplication
+        gui, root = self._win()
+        self._roots.append(root)
+        primary = _fake_screen(root.size())
+        with mock.patch.object(type(root), "screen", return_value=None), \
+             mock.patch.object(QGuiApplication, "primaryScreen",
+                               staticmethod(lambda: primary)):
+            root.refresh_backdrop()
+        self.assertIsNotNone(root._backdrop, "应回退到主屏幕并产出背景图")
+
+    def test_backdrop_null_grab_keeps_previous(self):
+        """抓取失败时保留上一帧画面，而不是清成纯色（视觉更平滑）。"""
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QImage, QPixmap
+        gui, root = self._win()
+        self._roots.append(root)
+        root._backdrop = QPixmap(root.size())
+        root._backdrop.fill(Qt.GlobalColor.red)   # 代表"上一帧真实画面"
+
+        class _Null:
+            def grabWindow(self, *_a):
+                class S:
+                    def toImage(self):
+                        return QImage()          # isNull() == True
+                return S()
+        with mock.patch.object(type(root), "screen", return_value=_Null()):
+            root.refresh_backdrop()
+        self.assertIsNotNone(root._backdrop, "抓取失败不应清空已有背景")
+        kept = root._backdrop.toImage().pixelColor(5, 5)
+        self.assertEqual((kept.red(), kept.green(), kept.blue()),
+                         (255, 0, 0), "应保留的正是上一帧画面内容")
+
+    def test_paint_falls_back_to_solid_glass_color(self):
+        """_backdrop 为 None 时 paintEvent 仍要画出兜底底色+玻璃色（校验真实像素）。"""
+        from PySide6.QtGui import QColor, QPixmap
+        from PySide6.QtWidgets import QWidget
+        gui, root = self._win()
+        self._roots.append(root)
+        hidden = [c for c in root.findChildren(QWidget)
+                  if c is not root and c.isVisible()]
+        for c in hidden:                    # 隐藏子控件，只留 paintEvent 的输出
+            c.hide()
+        root._backdrop = None
+        try:
+            pix = QPixmap(root.size())
+            root.render(pix)
+            got = pix.toImage().pixelColor(5, 5)
+            base = QColor(g.C_BG)
+            a = g.GLASS_TINT.alpha()
+            want = QColor(
+                (base.red() * a + g.GLASS_TINT.red() * (255 - a)) // 255,
+                (base.green() * a + g.GLASS_TINT.green() * (255 - a)) // 255,
+                (base.blue() * a + g.GLASS_TINT.blue() * (255 - a)) // 255)
+            self.assertLessEqual(abs(got.red() - want.red()), 6)
+            self.assertLessEqual(abs(got.green() - want.green()), 6)
+            self.assertLessEqual(abs(got.blue() - want.blue()), 6)
+        finally:
+            for c in hidden:
+                c.show()
+
+    def test_minimized_skips_sampling(self):
+        gui, root = self._win()
+        self._roots.append(root)
+        with mock.patch.object(type(root), "isMinimized", return_value=True), \
+             mock.patch.object(type(root), "screen",
+                               side_effect=AssertionError("最小化时不应采样")):
+            root.refresh_backdrop()        # 最小化时直接返回
+
+    # ---- 定时器合并（防回归：曾出现 5 次请求排 5 个定时器）----
+    def test_schedule_backdrop_coalesces(self):
+        gui, root = self._win()
+        self._roots.append(root)
+        with mock.patch.object(g.QTimer, "singleShot") as st:
+            for _ in range(5):
+                root._schedule_backdrop(10)
+            self.assertEqual(st.call_count, 1, "5 次请求应只排 1 个定时器")
+            with mock.patch.object(root, "refresh_backdrop"):
+                root._do_resample()         # 真实实现，清 pending
+        with mock.patch.object(g.QTimer, "singleShot") as st:
+            for _ in range(5):
+                root._schedule_backdrop(10)
+            self.assertEqual(st.call_count, 1, "pending 清除后应能再排 1 个")
+
+    def test_timer_carries_context_receiver(self):
+        """定时器必须带 context，窗口析构后自动取消，避免打到已释放对象。"""
+        gui, root = self._win()
+        self._roots.append(root)
+        with mock.patch.object(g.QTimer, "singleShot") as st:
+            root._schedule_backdrop(10)
+        args = st.call_args[0]
+        self.assertIs(args[1], root, "应传 self 作为 context 参数")
+        self.assertEqual(len(args), 3, "应为 singleShot(delay, context, slot)")
+
+    # ---- 无边框窗口交互 ----
+    def _press(self, root, x, y):
+        from PySide6.QtCore import QEvent, QPointF, Qt
+        from PySide6.QtGui import QMouseEvent
+        handle = mock.Mock()
+        with mock.patch.object(type(root), "windowHandle",
+                               return_value=handle):
+            ev = QMouseEvent(QEvent.Type.MouseButtonPress, QPointF(x, y),
+                             QPointF(x, y), Qt.MouseButton.LeftButton,
+                             Qt.MouseButton.LeftButton,
+                             Qt.KeyboardModifier.NoModifier)
+            root.mousePressEvent(ev)
+        return handle
+
+    def test_titlebar_blank_starts_system_move(self):
+        """回归：条件曾写反导致无边框窗口完全拖不动。"""
+        gui, root = self._win()
+        self._roots.append(root)
+        handle = self._press(root, root.width() // 2, 20)
+        handle.startSystemMove.assert_called_once()
+        handle.startSystemResize.assert_not_called()
+
+    def test_content_area_does_not_move_window(self):
+        gui, root = self._win()
+        self._roots.append(root)
+        handle = self._press(root, root.width() // 2,
+                             g.TITLEBAR_H + 80)
+        handle.startSystemMove.assert_not_called()
+        handle.startSystemResize.assert_not_called()
+
+    def test_edges_start_system_resize(self):
+        from PySide6.QtCore import Qt
+        gui, root = self._win()
+        self._roots.append(root)
+        w, h = root.width(), root.height()
+        checks = [
+            (1, h // 2, Qt.Edge.LeftEdge),
+            (w - 1, h // 2, Qt.Edge.RightEdge),
+            (w // 2, 1, Qt.Edge.TopEdge),
+            (w // 2, h - 1, Qt.Edge.BottomEdge),
+            (1, 1, Qt.Edge.LeftEdge | Qt.Edge.TopEdge),
+            (w // 2, h // 2, Qt.Edge(0)),
+        ]
+        for x, y, want in checks:
+            with self.subTest(x=x, y=y):
+                handle = self._press(root, x, y)
+                if want == Qt.Edge(0):
+                    handle.startSystemResize.assert_not_called()
+                else:
+                    handle.startSystemResize.assert_called_once_with(want)
+                    handle.startSystemMove.assert_not_called()
+
+    def test_escape_key_closes_window(self):
+        from PySide6.QtCore import QEvent, Qt
+        from PySide6.QtGui import QKeyEvent
+        gui, root = self._win()
+        self._roots.append(root)
+        with mock.patch.object(root, "close") as c:
+            root.keyPressEvent(QKeyEvent(
+                QEvent.Type.KeyPress, Qt.Key.Key_Escape,
+                Qt.KeyboardModifier.NoModifier))
+        c.assert_called_once()
+
+    # ---- 标题栏按钮 ----
+    def test_titlebar_has_window_buttons(self):
+        from PySide6.QtWidgets import QPushButton
+        gui, root = self._win()
+        self._roots.append(root)
+        names = ("tl_close", "tl_min", "tl_max")
+        btns = [b for b in root.findChildren(QPushButton)
+                if b.objectName() in names]
+        # macOS 交通灯顺序：关闭 - 最小化 - 最大化（从左到右）
+        self.assertEqual([b.objectName() for b in btns], list(names))
+        self.assertEqual([b.toolTip() for b in btns],
+                         ["关闭", "最小化", "最大化"])
+        self.assertIsNotNone(root.findChild(g.QFrame, "titlebar"))
+        for b in btns:                     # 交通灯应为小圆点，且三种颜色不同
+            self.assertEqual(b.width(), 14)
+            self.assertEqual(b.height(), 14)
+        for n in names:                    # QSS 必须给每个交通灯上色
+            self.assertIn("QPushButton#%s" % n, g.QSS)
+
+    def test_window_buttons_delegate(self):
+        gui, root = self._win()
+        self._roots.append(root)
+        with mock.patch.object(root, "showMinimized") as m:
+            gui._win_minimize()
+        m.assert_called_once()
+        with mock.patch.object(root, "isMaximized", return_value=False), \
+             mock.patch.object(root, "showMaximized") as mx:
+            gui._win_toggle_maximize()
+        mx.assert_called_once()
+        with mock.patch.object(root, "isMaximized", return_value=True), \
+             mock.patch.object(root, "showNormal") as mn:
+            gui._win_toggle_maximize()
+        mn.assert_called_once()
+
+    def test_close_button_uses_confirm_path(self):
+        gui, root = self._win()
+        self._roots.append(root)
+        gui.busy = True
+        with mock.patch.object(g, "_ask_yes_no", return_value=False):
+            gui._win_close()
+        self.assertFalse(gui.closing)      # 取消 -> 不关闭
+        with mock.patch.object(g, "_ask_yes_no", return_value=True):
+            gui._win_close()
+        self.assertTrue(gui.closing)
+
+    def test_qss_uses_translucent_layers(self):
+        for token in ("QFrame#titlebar", "QPushButton#tl_close",
+                      "QPushButton#tl_min", "QPushButton#tl_max",
+                      "background: transparent"):
+            self.assertIn(token, g.QSS)
+        # 控件层必须半透明，否则会盖住底层的毛玻璃
+        for name in ("C_CARD", "C_LOG_BG", "C_CARD_HOVER"):
+            self.assertTrue(getattr(g, name).startswith("rgba("),
+                            "%s 应为半透明 rgba" % name)
+
+    def test_qss_has_no_hash_comments(self):
+        """回归：Qt QSS 不支持 '#' 行注释（# 是 ID 选择器前缀）。
+
+        出现非法行会让解析中断，其后所有规则静默失效（曾导致交通灯不着色）。
+        """
+        for line in g.QSS.splitlines():
+            self.assertFalse(line.strip().startswith("#"),
+                             "QSS 中不能以 # 开头（会被当成 ID 选择器）: %s"
+                             % line.strip())
+
+
 class TestBuildConsistency(unittest.TestCase):
     """打包参数只在 build_exe.bat 与 release.yml 各写一份，用测试强制防漂移。"""
 
