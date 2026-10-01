@@ -29,6 +29,16 @@ if %errorlevel% neq 0 (
 echo [INFO] 开始打包...
 python -m PyInstaller --onefile --windowed --uac-admin --name KaliToolsGUI ^
     --distpath dist --workpath build --specpath build ^
+    --exclude-module PySide6.QtQml --exclude-module PySide6.QtQuick ^
+    --exclude-module PySide6.QtQuickWidgets --exclude-module PySide6.Qt3DCore ^
+    --exclude-module PySide6.Qt3DRender --exclude-module PySide6.QtWebEngineCore ^
+    --exclude-module PySide6.QtWebEngineWidgets --exclude-module PySide6.QtWebChannel ^
+    --exclude-module PySide6.QtWebSockets --exclude-module PySide6.QtMultimedia ^
+    --exclude-module PySide6.QtMultimediaWidgets --exclude-module PySide6.QtDesigner ^
+    --exclude-module PySide6.QtUiTools --exclude-module PySide6.QtHelp ^
+    --exclude-module PySide6.QtBluetooth --exclude-module PySide6.QtNfc ^
+    --exclude-module PySide6.QtPositioning --exclude-module PySide6.QtSensors ^
+    --exclude-module PySide6.QtSerialPort --exclude-module PySide6.QtTextToSpeech ^
     --noconfirm KaliToolsGUI.py
 
 if exist "dist\KaliToolsGUI.exe" (

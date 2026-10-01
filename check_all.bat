@@ -28,12 +28,13 @@ if not defined PY (
     exit /b 1
 )
 
+set "QT_QPA_PLATFORM=offscreen"
 set "FAILED=0"
 set "STEPS=2"
 if /i not "%~1"=="offline" set "STEPS=3"
 
 echo [1/!STEPS!] ¿ÎœﬂªÿπÈ≤‚ ‘...
-%PY% -m unittest test_kalitools test_check_urls test_check_versions
+%PY% -m unittest test_kalitools test_check_urls test_check_versions test_gui_ui
 if errorlevel 1 (
     echo [FAIL] ªÿπÈ≤‚ ‘Œ¥Õ®π˝
     set "FAILED=1"
@@ -41,7 +42,7 @@ if errorlevel 1 (
 
 echo.
 echo [2/!STEPS!] Python ”Ô∑®±‡“ÎºÏ≤È...
-for %%f in (KaliToolsGUI.py scripts\check_urls.py scripts\check_versions.py test_kalitools.py test_check_urls.py test_check_versions.py) do (
+for %%f in (KaliToolsGUI.py scripts\check_urls.py scripts\check_versions.py test_kalitools.py test_check_urls.py test_check_versions.py test_gui_ui.py) do (
     %PY% -m py_compile "%%f"
     if errorlevel 1 (
         echo [FAIL] ±‡“Î ß∞‹: %%f

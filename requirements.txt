@@ -1,1 +1,6 @@
+# 运行 GUI / 离线测试所需依赖
+# PySide6-Essentials: Qt 6 官方 Python 绑定（LGPL-3.0），提供 UI 引擎
+#   不含 QtWebEngine / QtQuick 等未使用模块，由 build_exe.bat 裁剪打包体积
+#   锁定次版本：QSS 渲染与离屏测试行为需可复现（升级时同步验证 44 项 GUI 测试）
 py7zr>=1.1.3
+PySide6-Essentials==6.11.2

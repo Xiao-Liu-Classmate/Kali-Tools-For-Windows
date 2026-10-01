@@ -103,11 +103,34 @@ GUI 内置 SHA256 校验机制（工具配置含 `sha256` 字段时自动校验�
 - Windows 10 / Windows 11
 - 需要管理员权限
 - 部分工具需要 Python 3 环境、Git（缺失时脚本会自动引导安装）
+- 从源码运行 GUI 需要 Python 3.9+ 与 `pip install -r requirements.txt`
+  （GUI 界面基于 **PySide6 / Qt 6**）；预编译的 `dist/KaliToolsGUI.exe` 无需安装 Python
+- Qt 6 依赖 MSVC 2019+ 运行库（vc_redist）；多数 Windows 10/11 已自带，
+  若 exe 报缺少 `VCRUNTIME140.dll`，安装
+  [Visual C++ 可再发行组件](https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist) 即可
+
+## 界面技术栈
+
+图形界面使用 **PySide6（Qt 6.11 官方 Python 绑定，LGPL-3.0）**：
+
+- 全部控件、布局、滚动条、对话框均为 Qt 原生 API，玻璃质感由 **QSS 样式表**表达
+  （渐变、圆角、悬停、禁用态），代码中不含自绘绘制逻辑
+- 相比 tkinter 的实际变化（本机实测）：
+  | 指标 | tkinter | PySide6 |
+  |---|---|---|
+  | `dist/KaliToolsGUI.exe` | 18.8 MB | 43.6 MB |
+  | 首窗出现 | 1.70 s | 1.77 s |
+  | 内存 WS | 74.6 MB | 96.4 MB |
+  | 高 DPI（125%/150%） | 需手写缩放 | **引擎原生自动** |
+- 打包时通过 `--exclude-module` 裁掉未使用的 Qt 模块（WebEngine/Quick/Qml/3D/Multimedia 等）
+
+> ⚠️ 依赖体积：`pip install PySide6-Essentials` 后占用约 226 MB
+> （主要是 Qt 运行库），这是选择成熟引擎的代价。
 
 ## 项目结构
 
 ```
-├── KaliToolsGUI.py            图形界面（可打包为 exe）
+├── KaliToolsGUI.py            图形界面（PySide6/Qt 6，可打包为 exe）
 ├── SecTools_Deploy.bat        命令行部署脚本（GBK 编码）
 ├── SecTools_Uninstall.bat     卸载脚本
 ├── Kali-Tools-Deployer.ps1    PowerShell 部署脚本
@@ -120,7 +143,8 @@ GUI 内置 SHA256 校验机制（工具配置含 `sha256` 字段时自动校验�
 ├── test_kalitools.py          离线回归测试（配置/BAT/PS1）
 ├── test_check_urls.py         URL 检查工具自身的测试
 ├── test_check_versions.py     版本检查工具自身的测试
-├── requirements.txt           Python 依赖（py7zr）
+├── test_gui_ui.py             GUI 层测试（Qt 控件 + 核心逻辑守护）
+├── requirements.txt           Python 依赖（py7zr、PySide6-Essentials）
 ├── SECURITY.md                安全漏洞报告策略
 ├── LICENSE                    MIT 许可证
 └── .github/
@@ -132,11 +156,17 @@ GUI 内置 SHA256 校验机制（工具配置含 `sha256` 字段时自动校验�
 ## 开发与测试
 
 ```bash
-# 安装依赖（运行 GUI/测试所需）
+# 安装依赖（运行 GUI/测试所需；国内可加清华镜像）
 pip install -r requirements.txt
 
 # 离线回归测试（无需网络/管理员权限，覆盖配置一致性、SHA256、BAT 结构、PS1 语法）
-python -m unittest test_kalitools test_check_urls test_check_versions -v
+python -m unittest test_kalitools test_check_urls test_check_versions test_gui_ui -v
+
+# 仅跑 GUI 层测试。Qt 控件测试使用离屏平台，不需要显示器。
+#   Windows(cmd)：  set QT_QPA_PLATFORM=offscreen
+#   PowerShell：    $env:QT_QPA_PLATFORM="offscreen"
+#   Linux/macOS：   export QT_QPA_PLATFORM=offscreen
+python -m unittest test_gui_ui -v
 
 # 检查全部下载源是否可用（HEAD 请求，失效退出码 1）
 python scripts/check_urls.py            # 全部来源：JSON + BAT + PS1
